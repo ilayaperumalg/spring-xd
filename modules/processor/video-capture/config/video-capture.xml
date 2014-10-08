@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:beans="http://www.springframework.org/schema/beans"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/integration
+		http://www.springframework.org/schema/integration/spring-integration.xsd">
+
+	<beans:bean class="org.springframework.xd.videocapture.VideoCaptureModule">
+		<beans:constructor-arg index="0" ref="input"/>
+		<beans:constructor-arg index="1" ref="videoHandler"/>
+	</beans:bean>
+
+	<beans:bean name="videoHandler" class="org.springframework.xd.videocapture.VideoCaptureMessageHandler">
+		<beans:constructor-arg value="${cameraUrl:http://kamery.darlowo.pl/mjpg/video.mjpg}"/>
+		<beans:property name="outputChannel" ref="output"/>
+	</beans:bean>
+
+	<channel id="output"/>
+
+	<channel id="input"/>
+</beans:beans>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns="http://www.springframework.org/schema/integration"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:beans="http://www.springframework.org/schema/beans"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:int-jdbc="http://www.springframework.org/schema/integration/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/integration http://www.springframework.org/schema/integration/spring-integration.xsd
+		http://www.springframework.org/schema/integration/jdbc http://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+	<channel id="input" />
+
+	<int-jdbc:outbound-channel-adapter
+		query="insert into ${tableName} (timestamp, image) values (:timestamp, :bytearray)"
+		data-source="dataSource" channel="input" sql-parameter-source-factory="spelEvaluator"/>
+		
+	<beans:bean id="spelEvaluator" class="org.springframework.integration.jdbc.ExpressionEvaluatingSqlParameterSourceFactory">
+	<beans:property name="parameterExpressions">
+			<beans:map>
+				<beans:entry key="timestamp" value="headers['timestamp']"/>
+				<beans:entry key="bytearray" value="payload"/>
+			</beans:map>
+		</beans:property>
+	</beans:bean>
+
+	<context:annotation-config/>
+
+	<bean id="dataSource" class="org.apache.tomcat.jdbc.pool.DataSource" destroy-method="close" xmlns="http://www.springframework.org/schema/beans">
+		<property name="driverClassName" value="${driverClassName}"/>
+		<property name="url" value="${url}"/>
+		<property name="username" value="${username}"/>
+		<property name="password" value="${password}"/>
+	</bean>
+
+</beans:beans>
