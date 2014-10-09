@@ -7,14 +7,12 @@
 		http://www.springframework.org/schema/integration
 		http://www.springframework.org/schema/integration/spring-integration.xsd">
 
-	<beans:bean class="org.springframework.xd.videocapture.VideoCaptureModule">
+	<beans:bean class="org.springframework.xd.videoanalyzer.VideoAnalyzerModule">
 		<beans:constructor-arg index="0" ref="input"/>
 		<beans:constructor-arg index="1" ref="videoHandler"/>
 	</beans:bean>
 
-	<beans:bean name="videoHandler" class="org.springframework.xd.videocapture.VideoCaptureMessageHandler">
-		<beans:constructor-arg value="${cameraUrl:http://kamery.darlowo.pl/mjpg/video.mjpg}"/>
-		<beans:property name="outputChannel" ref="output"/>
+	<beans:bean name="videoHandler" class="org.springframework.xd.videoanalyzer.VideoAnalyzerMessageHandler">
 	</beans:bean>
 
 	<channel id="output"/>
