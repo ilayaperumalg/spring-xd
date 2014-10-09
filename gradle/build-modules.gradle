@@ -207,18 +207,12 @@ project('modules.processor.aggregator') {
 
 project('modules.processor.video-capture') {
         dependencies {
-                compile "org.bytedeco:javacv:0.9"
-                compile "org.bytedeco.javacpp-presets:ffmpeg:2.3-0.9:macosx-x86_64"
-                compile "org.bytedeco.javacpp-presets:opencv:2.4.9-0.9:macosx-x86_64"
                 runtime "org.springframework.xd.videocapture:spring-xd-video-capture:0.1.0"
         }
 }
 
 project('modules.processor.video-analyze') {
         dependencies {
-                compile "org.bytedeco:javacv:0.9"
-                compile "org.bytedeco.javacpp-presets:ffmpeg:2.3-0.9:macosx-x86_64"
-                compile "org.bytedeco.javacpp-presets:opencv:2.4.9-0.9:macosx-x86_64"
                 runtime "org.springframework.xd.videoanalyzer:spring-xd-video-analyzer:0.1.0"
         }
 }
