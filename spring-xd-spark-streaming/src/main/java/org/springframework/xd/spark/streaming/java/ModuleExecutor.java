@@ -17,17 +17,23 @@
 package org.springframework.xd.spark.streaming.java;
 
 import java.io.Serializable;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import org.apache.spark.api.java.JavaRDDLike;
+import org.apache.spark.api.java.function.FlatMapFunction;
 import org.apache.spark.api.java.function.Function;
 import org.apache.spark.api.java.function.VoidFunction;
+import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaDStreamLike;
 import org.apache.spark.streaming.api.java.JavaReceiverInputDStream;
 
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
+import org.springframework.core.ResolvableType;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.util.Assert;
 import org.springframework.xd.spark.streaming.SparkMessageSender;
 import org.springframework.xd.spark.streaming.SparkStreamingModuleExecutor;
 
@@ -40,13 +46,38 @@ import org.springframework.xd.spark.streaming.SparkStreamingModuleExecutor;
  * @since 1.1
  */
 @SuppressWarnings({"unchecked", "rawtypes", "serial"})
-public class ModuleExecutor implements SparkStreamingModuleExecutor<JavaReceiverInputDStream, Processor> , Serializable {
+public class ModuleExecutor implements SparkStreamingModuleExecutor<JavaReceiverInputDStream, Processor>, Serializable {
 
 	private static SparkMessageSender messageSender;
 
+	private static final String PROCESSOR_METHOD_NAME = "process";
+
 	@SuppressWarnings("rawtypes")
 	public void execute(JavaReceiverInputDStream input, Processor processor, final SparkMessageSender sender) {
-		JavaDStreamLike output = processor.process(input);
+		Method[] methods = processor.getClass().getDeclaredMethods();
+		Class<?> parameterType = null;
+		for (Method method : methods) {
+			if (method.getName().contains(PROCESSOR_METHOD_NAME)) {
+				ResolvableType resolvableType = ResolvableType.forMethodParameter(method, 0);
+				parameterType = resolvableType.getGeneric(0).resolve();
+			}
+		}
+		Assert.notNull(parameterType, "The Processor should have process method implemented");
+		Assert.notNull(parameterType);
+		System.out.println("********* parameter type ********"+ parameterType);
+		JavaDStream<?> convertedInput = null;
+		if (!parameterType.isAssignableFrom(Message.class)) {
+			convertedInput = input.flatMap(new FlatMapFunction<Message, Object>() {
+
+				@Override
+				public Iterable<Object> call(Message x) {
+					return Arrays.asList(x.getPayload());
+				}
+			});
+		}
+		System.out.println("********* converted type ********"+ convertedInput);
+		JavaDStreamLike output = (convertedInput != null) ? processor.process(convertedInput) :
+				processor.process(input);
 		if (output != null) {
 			output.foreachRDD(new Function<JavaRDDLike, Void>() {
 

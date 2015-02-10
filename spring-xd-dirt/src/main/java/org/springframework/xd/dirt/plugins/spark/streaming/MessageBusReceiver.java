@@ -28,6 +28,7 @@ import org.springframework.integration.channel.DirectChannel;
 import org.springframework.messaging.Message;
 import org.springframework.util.MimeType;
 import org.springframework.xd.dirt.integration.bus.MessageBus;
+import org.springframework.xd.spark.streaming.SparkMessage;
 
 /**
  * Spark {@link Receiver} implementation that binds to the MessageBus as a consumer.
@@ -121,7 +122,7 @@ class MessageBusReceiver extends Receiver {
 
 		@Override
 		protected boolean doSend(Message<?> message, long timeout) {
-			store(message.getPayload());
+			store(new SparkMessage(message));
 			return true;
 		}
 	}

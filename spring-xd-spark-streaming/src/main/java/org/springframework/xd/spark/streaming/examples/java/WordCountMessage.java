@@ -25,6 +25,7 @@ import org.apache.spark.api.java.function.PairFunction;
 import org.apache.spark.streaming.api.java.JavaDStream;
 import org.apache.spark.streaming.api.java.JavaPairDStream;
 
+import org.springframework.messaging.Message;
 import org.springframework.xd.spark.streaming.SparkConfig;
 import org.springframework.xd.spark.streaming.java.Processor;
 
@@ -35,51 +36,16 @@ import scala.Tuple2;
  * @author Ilayaperumal Gopinathan
  * @since 1.1
  */
-@SuppressWarnings({ "serial" })
-//public class WordCount implements Processor<JavaDStream<Message<String>>, JavaPairDStream<String, Integer>> {
-//
-//	@Override
-//	public JavaPairDStream<String, Integer> process(JavaDStream<Message<String>> input) {
-//		JavaDStream<String> words = input.flatMap(new FlatMapFunction<Message<String>, String>() {
-//
-//			@Override
-//			public Iterable<String> call(Message<String> x) {
-//				return Arrays.asList(x.getPayload().split(" "));
-//			}
-//		});
-//		JavaPairDStream<String, Integer> wordCounts = words.mapToPair(new PairFunction<String, String, Integer>() {
-//
-//			@Override
-//			public Tuple2<String, Integer> call(String s) {
-//				return new Tuple2<String, Integer>(s, 1);
-//			}
-//		}).reduceByKey(new Function2<Integer, Integer, Integer>() {
-//
-//			@Override
-//			public Integer call(Integer i1, Integer i2) {
-//				return i1 + i2;
-//			}
-//		});
-//		return wordCounts;
-//	}
-//
-//	@SparkConfig
-//	public Properties getSparkConfigProperties() {
-//		Properties props = new Properties();
-//		props.setProperty(SPARK_MASTER_URL_PROP, "local[4]");
-//		return props;
-//	}
-//}
-
-public class WordCount implements Processor<JavaDStream<String>, JavaPairDStream<String, Integer>> {
+@SuppressWarnings({ "serial", "rawtypes", "unchecked" })
+public class WordCountMessage implements Processor<JavaDStream<Message<String>>, JavaPairDStream<String, Integer>> {
 
 	@Override
-	public JavaPairDStream<String, Integer> process(JavaDStream<String> input) {
-		JavaDStream<String> words = input.flatMap(new FlatMapFunction<String, String>() {
+	public JavaPairDStream<String, Integer> process(JavaDStream<Message<String>> input) {
+		JavaDStream<String> words = input.flatMap(new FlatMapFunction<Message<String>, String>() {
 
 			@Override
-			public Iterable<String> call(String x) {
-				return Arrays.asList(x.split(" "));
+			public Iterable<String> call(Message<String> x) {
+				return Arrays.asList(x.getPayload().split(" "));
 			}
 		});
 		JavaPairDStream<String, Integer> wordCounts = words.mapToPair(new PairFunction<String, String, Integer>() {
