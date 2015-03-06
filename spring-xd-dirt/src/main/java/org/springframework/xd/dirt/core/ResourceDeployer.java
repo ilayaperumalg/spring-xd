@@ -28,7 +28,7 @@ import org.springframework.xd.dirt.stream.StreamDefinition;
  * @author Gunnar Hillert
  * @author Ilayaperumal Gopinathan
  */
-public interface ResourceDeployer<R extends BaseDefinition> {
+public interface ResourceDeployer<R extends BaseDefinition> extends ResourcePreDeployer {
 
 	/**
 	 * Deploy a resource (job or stream).

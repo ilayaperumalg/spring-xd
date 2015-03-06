@@ -35,9 +35,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.xd.dirt.job.BatchJobAlreadyExistsException;
 import org.springframework.xd.dirt.plugins.job.DistributedJobLocator;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitType;
 import org.springframework.xd.dirt.stream.JobDefinition;
-import org.springframework.xd.dirt.stream.JobDefinitionRepository;
-import org.springframework.xd.dirt.stream.JobDeployer;
+import org.springframework.xd.dirt.stream.ZKJobDeployer;
 import org.springframework.xd.rest.domain.JobDefinitionResource;
 
 /**
@@ -58,22 +58,21 @@ public class JobsController extends
 	private DistributedJobLocator distributedJobLocator;
 
 	@Autowired
-	public JobsController(JobDeployer jobDeployer,
-			JobDefinitionRepository jobDefinitionRepository) {
-		super(jobDeployer, new JobDefinitionResourceAssembler());
+	public JobsController(ZKJobDeployer jobDeployer) {
+		super(jobDeployer, new JobDefinitionResourceAssembler(), DeploymentUnitType.Job);
 	}
 
 	@Override
 	@RequestMapping(value = "/definitions", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
 	@ResponseBody
-	public JobDefinitionResource save(@RequestParam("name") String name, @RequestParam("definition") String definition,
-			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) {
+	public void save(@RequestParam("name") String name, @RequestParam("definition") String definition,
+			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) throws Exception {
 		// Verify if the batch job repository already has the job with the same name.
 		if (distributedJobLocator.getJobNames().contains(name)) {
 			throw new BatchJobAlreadyExistsException(name);
 		}
-		return super.save(name, definition, deploy);
+		super.save(name, definition, deploy);
 	}
 
 	/**
