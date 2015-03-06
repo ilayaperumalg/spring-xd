@@ -30,6 +30,8 @@ import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.cluster.NoContainerException;
 import org.springframework.xd.dirt.core.ModuleDeploymentsPath;
@@ -68,29 +70,16 @@ public class ModuleDeploymentWriter {
 	 */
 	private static final Logger logger = LoggerFactory.getLogger(ModuleDeploymentWriter.class);
 
-	/**
-	 * ZooKeeper connection.
-	 */
-	private final ZooKeeperConnection zkConnection;
+	@Autowired
+	private ZooKeeperConnection zkConnection;
 
 	/**
 	 * Amount of time to wait for a status to be written to all module
 	 * deployment request paths.
 	 *
 	 */
-	private final long deploymentTimeout;
-
-	/**
-	 * Construct a {@code ModuleDeploymentWriter}.
-	 *
-	 * @param zkConnection         ZooKeeper connection
-	 * @param deploymentTimeout    Deployment timeout to wait for status
-	 */
-	public ModuleDeploymentWriter(ZooKeeperConnection zkConnection, long deploymentTimeout) {
-		this.zkConnection = zkConnection;
-		this.deploymentTimeout = deploymentTimeout;
-	}
-
+	@Value("${xd.admin.deploymentTimeout:30000}")
+	private long deploymentTimeout;
 
 	/**
 	 * Write a module deployment request for the provided module descriptor

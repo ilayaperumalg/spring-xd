@@ -16,6 +16,7 @@
 
 package org.springframework.xd.dirt.stream;
 
+import java.util.List;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -24,7 +25,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.util.Assert;
 import org.springframework.xd.dirt.core.BaseDefinition;
+import org.springframework.xd.dirt.server.DeploymentUnitType;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
+import org.springframework.xd.module.ModuleDescriptor;
 import org.springframework.xd.store.DomainRepository;
 
 /**
@@ -44,11 +47,14 @@ public abstract class AbstractInstancePersistingDeployer<D extends BaseDefinitio
 
 	protected DomainRepository<I, String> instanceRepository;
 
+	private final DeploymentUnitType deploymentUnitType;
+
 	protected AbstractInstancePersistingDeployer(ZooKeeperConnection zkConnection,
 			PagingAndSortingRepository<D, String> definitionRespository,
 			DomainRepository<I, String> instanceRepository, XDParser parser,
-			ParsingContext definitionKind) {
+			DeploymentUnitType deploymentUnitType, ParsingContext definitionKind) {
 		super(zkConnection, definitionRespository, parser, definitionKind);
+		this.deploymentUnitType = deploymentUnitType;
 		this.instanceRepository = instanceRepository;
 	}
 
@@ -60,9 +66,19 @@ public abstract class AbstractInstancePersistingDeployer<D extends BaseDefinitio
 	}
 
 	@Override
-	public void undeploy(String name) {
+	public void preSave(String name, String definition) {
 		Assert.hasText(name, "name cannot be blank or null");
-		logger.trace("Undeploying {}", name);
+		D definitionFromRepo = getDefinitionRepository().findOne(name);
+		if (definitionFromRepo != null) {
+			throwDefinitionAlreadyExistsException(definitionFromRepo);
+		}
+		Assert.notNull(definition, "Definition may not be null");
+		parser.parse(name, definition, definitionKind);
+	}
+
+	@Override
+	public void precheckUndeploy(String name) {
+		Assert.hasText(name, "name cannot be blank or null");
 
 		D definition = getDefinitionRepository().findOne(name);
 		if (definition == null) {
@@ -73,25 +89,47 @@ public abstract class AbstractInstancePersistingDeployer<D extends BaseDefinitio
 		if (instance == null) {
 			throwNotDeployedException(name);
 		}
+	}
 
+	@Override
+	public void undeploy(String name) {
+		logger.trace("Undeploying {}", name);
+
+		D definition = getDefinitionRepository().findOne(name);
+		if (definition == null) {
+			throwNoSuchDefinitionException(name);
+		}
+		final I instance = instanceRepository.findOne(name);
+		if (instance == null) {
+			throwNotDeployedException(name);
+		}
 		instanceRepository.delete(instance);
+		undeployResource(deploymentUnitType, name);
+	}
 
+	@Override
+	public void precheckDeploy(String name, Map<String, String> properties) {
+		Assert.hasText(name, "name cannot be blank or null");
+		Assert.notNull(properties, "properties cannot be null");
+		D definition = getDefinitionRepository().findOne(name);
+		if (definition == null) {
+			throwNoSuchDefinitionException(name);
+		}
+		if (instanceRepository.exists(name)) {
+			throwAlreadyDeployedException(name);
+		}
 	}
 
 	@Override
 	public void deploy(String name, Map<String, String> properties) {
-
-		Assert.hasText(name, "name cannot be blank or null");
-		Assert.notNull(properties, "properties cannot be null");
-
 		if (instanceRepository.exists(name)) {
 			throwAlreadyDeployedException(name);
 		}
-
 		final D definition = basicDeploy(name, properties);
 
 		final I instance = makeInstance(definition);
 		instanceRepository.save(instance);
+		deployResource(deploymentUnitType, name);
 	}
 
 	@Override

@@ -31,13 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.xd.dirt.cluster.Container;
-import org.springframework.xd.dirt.container.store.ContainerRepository;
-import org.springframework.xd.dirt.core.Job;
-import org.springframework.xd.dirt.core.Stream;
-import org.springframework.xd.dirt.job.JobFactory;
-import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.Paths;
-import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 
 /**
@@ -90,30 +84,20 @@ public class ContainerListener implements PathChildrenCacheListener {
 	/**
 	 * Construct a ContainerListener.
 	 *
-	 * @param zkConnection ZooKeeper connection
-	 * @param streamFactory factory to construct {@link Stream}
-	 * @param jobFactory factory to construct {@link Job}
+	 * @param zkDeploymentUtil ZooKeeper deployment utility
 	 * @param streamDeployments cache of children for stream deployments path
 	 * @param jobDeployments cache of children for job deployments path
 	 * @param moduleDeploymentRequests cache of children for requested module deployments path
-	 * @param containerMatcher matches modules to containers
-	 * @param moduleDeploymentWriter utility that writes deployment requests to zk path
-	 * @param stateCalculator calculator for stream/job state
 	 * @param quietPeriod AtomicLong indicating quiet period for new container module deployments
 	 */
-	public ContainerListener(ZooKeeperConnection zkConnection,
-			ContainerRepository containerRepository,
-			StreamFactory streamFactory, JobFactory jobFactory,
+	public ContainerListener(ZKDeploymentUtil zkDeploymentUtil,
 			PathChildrenCache streamDeployments, PathChildrenCache jobDeployments,
-			PathChildrenCache moduleDeploymentRequests, ContainerMatcher containerMatcher,
-			ModuleDeploymentWriter moduleDeploymentWriter, DeploymentUnitStateCalculator stateCalculator,
+			PathChildrenCache moduleDeploymentRequests,
 			ScheduledExecutorService executorService, AtomicLong quietPeriod) {
-		this.containerMatchingModuleRedeployer = new ContainerMatchingModuleRedeployer(zkConnection,
-				containerRepository, streamFactory, jobFactory, streamDeployments, jobDeployments,
-				moduleDeploymentRequests, containerMatcher, moduleDeploymentWriter, stateCalculator);
-		this.departingContainerModuleRedeployer = new DepartingContainerModuleRedeployer(zkConnection,
-				containerRepository, streamFactory, jobFactory, moduleDeploymentRequests, containerMatcher,
-				moduleDeploymentWriter, stateCalculator);
+		this.containerMatchingModuleRedeployer = new ContainerMatchingModuleRedeployer(zkDeploymentUtil,
+				streamDeployments, jobDeployments, moduleDeploymentRequests);
+		this.departingContainerModuleRedeployer = new DepartingContainerModuleRedeployer(zkDeploymentUtil,
+				moduleDeploymentRequests);
 		this.quietPeriod = quietPeriod;
 		this.executorService = executorService;
 	}
