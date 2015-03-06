@@ -35,7 +35,6 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.cluster.NoContainerException;
-import org.springframework.xd.dirt.container.store.ContainerRepository;
 import org.springframework.xd.dirt.core.DeploymentUnit;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.Job;
@@ -43,10 +42,7 @@ import org.springframework.xd.dirt.core.JobDeploymentsPath;
 import org.springframework.xd.dirt.core.ModuleDeploymentRequestsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
-import org.springframework.xd.dirt.job.JobFactory;
-import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.Paths;
-import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDeploymentProperties;
 import org.springframework.xd.module.ModuleDescriptor;
@@ -71,70 +67,21 @@ public abstract class ModuleRedeployer {
 	 */
 	private final Logger logger = LoggerFactory.getLogger(ModuleRedeployer.class);
 
-	/**
-	 * The ZooKeeper connection.
-	 */
-	private final ZooKeeperConnection zkConnection;
-
-	/**
-	 * Repository from which to obtain containers in the cluster.
-	 */
-	private final ContainerRepository containerRepository;
-
-	/**
-	 * Container matcher for matching modules to containers.
-	 */
-	private final ContainerMatcher containerMatcher;
-
-	/**
-	 * Utility for writing module deployment requests to ZooKeeper.
-	 */
-	private final ModuleDeploymentWriter moduleDeploymentWriter;
+	protected final ZKDeploymentUtil zkDeploymentUtil;
 
 	/**
 	 * Cache of children under the module deployment requests path.
 	 */
 	protected final PathChildrenCache moduleDeploymentRequests;
-
-	/**
-	 * Stream factory.
-	 */
-	protected final StreamFactory streamFactory;
-
-	/**
-	 * Job factory.
-	 */
-	protected final JobFactory jobFactory;
-
-	/**
-	 * State calculator for stream/job state.
-	 */
-	private final DeploymentUnitStateCalculator stateCalculator;
-
 	/**
 	 * Constructs {@code ModuleRedeployer}
 	 *
-	 * @param zkConnection ZooKeeper connection
-	 * @param containerRepository the repository to find the containers
-	 * @param streamFactory factory to construct {@link Stream}
-	 * @param jobFactory factory to construct {@link Job}
+	 * @param zkDeploymentUtil ZooKeeper deployment utility
 	 * @param moduleDeploymentRequests cache of children for requested module deployments path
-	 * @param containerMatcher matches modules to containers
-	 * @param moduleDeploymentWriter utility that writes deployment requests to zk path
-	 * @param stateCalculator calculator for stream/job state
 	 */
-	public ModuleRedeployer(ZooKeeperConnection zkConnection,
-			ContainerRepository containerRepository, StreamFactory streamFactory, JobFactory jobFactory,
-			PathChildrenCache moduleDeploymentRequests, ContainerMatcher containerMatcher,
-			ModuleDeploymentWriter moduleDeploymentWriter, DeploymentUnitStateCalculator stateCalculator) {
-		this.zkConnection = zkConnection;
-		this.containerRepository = containerRepository;
-		this.containerMatcher = containerMatcher;
-		this.moduleDeploymentWriter = moduleDeploymentWriter;
+	public ModuleRedeployer(ZKDeploymentUtil zkDeploymentUtil, PathChildrenCache moduleDeploymentRequests) {
+		this.zkDeploymentUtil = zkDeploymentUtil;
 		this.moduleDeploymentRequests = moduleDeploymentRequests;
-		this.streamFactory = streamFactory;
-		this.jobFactory = jobFactory;
-		this.stateCalculator = stateCalculator;
 	}
 
 	/**
@@ -151,7 +98,7 @@ public abstract class ModuleRedeployer {
 	 * @return Curator client
 	 */
 	protected CuratorFramework getClient() {
-		return zkConnection.getClient();
+		return zkDeploymentUtil.getZkConnection().getClient();
 	}
 
 	/**
@@ -264,7 +211,7 @@ public abstract class ModuleRedeployer {
 				Collection<String> containers = (moduleDescriptor.getType() == ModuleType.job)
 						? getContainersForJobModule(moduleDescriptor)
 						: getContainersForStreamModule(moduleDescriptor);
-				deploymentStatus = deployModule(moduleDeployment, containerMatcher, containers);
+				deploymentStatus = deployModule(moduleDeployment, zkDeploymentUtil.getContainerMatcher(), containers);
 			}
 			catch (NoContainerException e) {
 				logger.warn("No containers available for redeployment of {} for stream {}",
@@ -301,14 +248,14 @@ public abstract class ModuleRedeployer {
 			ContainerMatcher containerMatcher, Collection<String> exclusions) throws Exception {
 		transitionToDeploying(moduleDeployment.deploymentUnit);
 		
-		Iterable<Container> containers = containerRepository.findAll();
+		Iterable<Container> containers = zkDeploymentUtil.getContainerRepository().findAll();
 		MatchingPredicate matchingPredicate = new MatchingPredicate(exclusions);
 		Collection<Container> matchedContainers = containerMatcher.match(moduleDeployment.moduleDescriptor,
 				moduleDeployment.runtimeDeploymentProperties, Iterables.filter(containers, matchingPredicate));
 		if (matchedContainers.isEmpty()) {
 			throw new NoContainerException();
 		}
-		return moduleDeploymentWriter.writeDeployment(moduleDeployment.moduleDescriptor,
+		return zkDeploymentUtil.getModuleDeploymentWriter().writeDeployment(moduleDeployment.moduleDescriptor,
 				moduleDeployment.runtimeDeploymentProperties, matchedContainers.iterator().next());
 	}
 
@@ -434,7 +381,7 @@ public abstract class ModuleRedeployer {
 		ModuleDeploymentPropertiesProvider<ModuleDeploymentProperties> provider = new DefaultModuleDeploymentPropertiesProvider(
 				deploymentUnit);
 
-		DeploymentUnitStatus status = stateCalculator.calculate(deploymentUnit, provider, aggregateStatuses);
+		DeploymentUnitStatus status = zkDeploymentUtil.getStateCalculator().calculate(deploymentUnit, provider, aggregateStatuses);
 
 		logger.info("Deployment state for {} '{}': {}",
 				isStream ? "stream" : "job", deploymentUnit.getName(), status);
@@ -496,12 +443,12 @@ public abstract class ModuleRedeployer {
 
 
 	/**
-	 * Predicate used to determine if a container should be returned by {@link #match}.
+	 * Predicate used to determine if a container should be returned by the ContainerMatcher.
 	 */
 	private class MatchingPredicate implements Predicate<Container> {
 
 		/**
-		 * Set of container names that should <b>not</b> be returned by {@link #filterContainers}.
+		 * Set of container names that should <b>not</b> be returned by {@link #apply(org.springframework.xd.dirt.cluster.Container)}.
 		 */
 		private final Set<String> exclusions;
 

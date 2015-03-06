@@ -43,8 +43,8 @@ import org.springframework.xd.analytics.metrics.core.FieldValueCounterRepository
 import org.springframework.xd.analytics.metrics.core.GaugeRepository;
 import org.springframework.xd.analytics.metrics.core.RichGaugeRepository;
 import org.springframework.xd.dirt.container.store.ContainerRepository;
-import org.springframework.xd.dirt.integration.bus.local.LocalMessageBus;
 import org.springframework.xd.dirt.integration.bus.MessageBus;
+import org.springframework.xd.dirt.integration.bus.local.LocalMessageBus;
 import org.springframework.xd.dirt.module.ModuleDefinitionService;
 import org.springframework.xd.dirt.module.ModuleDependencyRepository;
 import org.springframework.xd.dirt.module.WriteableModuleRegistry;
@@ -241,4 +241,5 @@ public class Dependencies {
 	public ExecutionContextDao executionContextDao() {
 		return mock(JdbcExecutionContextDao.class);
 	}
+
 }

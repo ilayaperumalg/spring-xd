@@ -27,16 +27,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.xd.dirt.cluster.Container;
-import org.springframework.xd.dirt.container.store.ContainerRepository;
 import org.springframework.xd.dirt.core.Job;
 import org.springframework.xd.dirt.core.JobDeploymentsPath;
 import org.springframework.xd.dirt.core.ModuleDeploymentRequestsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
-import org.springframework.xd.dirt.job.JobFactory;
-import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.Paths;
-import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDescriptor;
 import org.springframework.xd.module.RuntimeModuleDeploymentProperties;
@@ -69,25 +65,14 @@ public class ContainerMatchingModuleRedeployer extends ModuleRedeployer {
 	/**
 	 * Constructs {@code ArrivingContainerModuleRedeployer}
 	 *
-	 * @param zkConnection ZooKeeper connection
-	 * @param containerRepository the repository to find the containers
-	 * @param streamFactory factory to construct {@link Stream}
-	 * @param jobFactory factory to construct {@link Job}
 	 * @param streamDeployments cache of children for stream deployments path
 	 * @param jobDeployments cache of children for job deployments path
 	 * @param moduleDeploymentRequests cache of children for requested module deployments path
-	 * @param containerMatcher matches modules to containers
-	 * @param moduleDeploymentWriter utility that writes deployment requests to zk path
-	 * @param stateCalculator calculator for stream/job state
 	 */
-	public ContainerMatchingModuleRedeployer(ZooKeeperConnection zkConnection,
-			ContainerRepository containerRepository,
-			StreamFactory streamFactory, JobFactory jobFactory,
+	public ContainerMatchingModuleRedeployer(ZKDeploymentUtil zkDeploymentUtil,
 			PathChildrenCache streamDeployments, PathChildrenCache jobDeployments,
-			PathChildrenCache moduleDeploymentRequests, ContainerMatcher containerMatcher,
-			ModuleDeploymentWriter moduleDeploymentWriter, DeploymentUnitStateCalculator stateCalculator) {
-		super(zkConnection, containerRepository, streamFactory, jobFactory, moduleDeploymentRequests, containerMatcher,
-				moduleDeploymentWriter, stateCalculator);
+			PathChildrenCache moduleDeploymentRequests) {
+		super(zkDeploymentUtil, moduleDeploymentRequests);
 		this.streamDeployments = streamDeployments;
 		this.jobDeployments = jobDeployments;
 	}
@@ -121,7 +106,7 @@ public class ContainerMatchingModuleRedeployer extends ModuleRedeployer {
 		// iterate the cache of stream deployments
 		for (ChildData data : streamDeployments.getCurrentData()) {
 			String streamName = ZooKeeperUtils.stripPathConverter.convert(data);
-			final Stream stream = DeploymentLoader.loadStream(client, streamName, streamFactory);
+			final Stream stream = DeploymentLoader.loadStream(client, streamName, zkDeploymentUtil.getStreamFactory());
 			// if stream is null this means the stream was destroyed or undeployed
 			if (stream != null) {
 				List<ModuleDeploymentRequestsPath> requestedModules =
@@ -165,7 +150,7 @@ public class ContainerMatchingModuleRedeployer extends ModuleRedeployer {
 			String jobName = ZooKeeperUtils.stripPathConverter.convert(data);
 
 			// if job is null this means the job was destroyed or undeployed
-			Job job = DeploymentLoader.loadJob(client, jobName, this.jobFactory);
+			Job job = DeploymentLoader.loadJob(client, jobName, zkDeploymentUtil.getJobFactory());
 			if (job != null) {
 				List<ModuleDeploymentRequestsPath> requestedModules = ModuleDeploymentRequestsPath.getModulesForDeploymentUnit(
 						requestedModulesPaths, jobName);

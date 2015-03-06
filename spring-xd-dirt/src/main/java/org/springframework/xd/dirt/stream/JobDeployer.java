@@ -26,6 +26,7 @@ import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.util.Assert;
 import org.springframework.xd.dirt.integration.bus.MessageBus;
+import org.springframework.xd.dirt.server.DeploymentUnitType;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.module.ModuleDescriptor;
@@ -47,7 +48,7 @@ public class JobDeployer extends AbstractInstancePersistingDeployer<JobDefinitio
 	public JobDeployer(ZooKeeperConnection zkConnection, JobDefinitionRepository definitionRepository,
 			JobRepository instanceRepository,
 			XDParser parser, MessageBus messageBus) {
-		super(zkConnection, definitionRepository, instanceRepository, parser, job);
+		super(zkConnection, definitionRepository, instanceRepository, parser, DeploymentUnitType.Job, job);
 		Assert.notNull(messageBus, "MessageBus must not be null");
 		this.messageBus = messageBus;
 	}

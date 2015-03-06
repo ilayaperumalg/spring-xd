@@ -17,7 +17,6 @@
 package org.springframework.xd.dirt.rest;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +40,10 @@ import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.ResourceDeployer;
 import org.springframework.xd.dirt.integration.bus.rabbit.NothingToDeleteException;
 import org.springframework.xd.dirt.integration.bus.rabbit.RabbitBusCleaner;
+import org.springframework.xd.dirt.server.DeploymentAction;
+import org.springframework.xd.dirt.server.DeploymentMessage;
+import org.springframework.xd.dirt.server.DeploymentQueueConsumer;
+import org.springframework.xd.dirt.server.DeploymentUnitType;
 import org.springframework.xd.dirt.stream.AbstractDeployer;
 import org.springframework.xd.dirt.stream.AbstractInstancePersistingDeployer;
 import org.springframework.xd.dirt.stream.BaseInstance;
@@ -70,6 +73,23 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 
 	private final RabbitBusCleaner busCleaner = new RabbitBusCleaner();
 
+	private DeploymentMessageHandler deploymentMessageHandler = new DeploymentMessageHandler() {
+
+		DeploymentQueueConsumer queueConsumer = new DeploymentQueueConsumer();
+
+		@Override
+		public void handleDeploymentMessage(DeploymentMessage deploymentMessage) {
+			try {
+				queueConsumer.consumeMessage(deploymentMessage, deployer);
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+	};
+
+	private final DeploymentUnitType deploymentUnitType;
+
 	/**
 	 * Data holder class for controlling how the list methods should behave.
 	 *
@@ -93,9 +113,10 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 		}
 	}
 
-	protected XDController(AbstractDeployer<D> deployer, A resourceAssemblerSupport) {
+	protected XDController(AbstractDeployer<D> deployer, A resourceAssemblerSupport, DeploymentUnitType deploymentUnitType) {
 		this.deployer = deployer;
 		this.resourceAssemblerSupport = resourceAssemblerSupport;
+		this.deploymentUnitType = deploymentUnitType;
 	}
 
 	protected ResourceDeployer<D> getDeployer() {
@@ -109,8 +130,11 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	 */
 	@RequestMapping(value = "/definitions/{name}", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
-	public void delete(@PathVariable("name") String name) {
-		deployer.delete(name);
+	public void delete(@PathVariable("name") String name) throws Exception {
+		deployer.precheckDelete(name);
+		deploymentMessageHandler.handleDeploymentMessage(new DeploymentMessage(deploymentUnitType)
+				.setUnitName(name)
+				.setDeploymentAction(DeploymentAction.destroy));
 	}
 
 	/**
@@ -118,8 +142,9 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	 */
 	@RequestMapping(value = "/definitions", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
-	public void deleteAll() {
-		deployer.deleteAll();
+	public void deleteAll() throws Exception {
+		deploymentMessageHandler.handleDeploymentMessage(new DeploymentMessage(deploymentUnitType)
+				.setDeploymentAction(DeploymentAction.destroyAll));
 	}
 
 	/**
@@ -129,8 +154,11 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	 */
 	@RequestMapping(value = "/deployments/{name}", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
-	public void undeploy(@PathVariable("name") String name) {
-		deployer.undeploy(name);
+	public void undeploy(@PathVariable("name") String name) throws Exception {
+		deployer.precheckUndeploy(name);
+		deploymentMessageHandler.handleDeploymentMessage(new DeploymentMessage(deploymentUnitType)
+				.setUnitName(name)
+				.setDeploymentAction(DeploymentAction.undeploy));
 	}
 
 	/**
@@ -138,8 +166,9 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	 */
 	@RequestMapping(value = "/deployments", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
-	public void undeployAll() {
-		deployer.undeployAll();
+	public void undeployAll() throws Exception {
+		deploymentMessageHandler.handleDeploymentMessage(new DeploymentMessage(deploymentUnitType)
+				.setDeploymentAction(DeploymentAction.undeployAll));
 	}
 
 	/**
@@ -152,8 +181,13 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/deployments/{name}", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
 	@ResponseBody
-	public void deploy(@PathVariable("name") String name, @RequestParam(required = false) String properties) {
-		deployer.deploy(name, DeploymentPropertiesFormat.parseDeploymentProperties(properties));
+	public void deploy(@PathVariable("name") String name, @RequestParam(required = false) String properties) throws Exception {
+		Map<String, String> deploymentProperties = DeploymentPropertiesFormat.parseDeploymentProperties(properties);
+		deployer.precheckDeploy(name, deploymentProperties);
+		deploymentMessageHandler.handleDeploymentMessage(new DeploymentMessage(deploymentUnitType)
+				.setUnitName(name)
+				.setDeploymentAction(DeploymentAction.deploy)
+				.setDeploymentProperties(deploymentProperties));
 	}
 
 	/**
@@ -164,7 +198,7 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/definitions/{name}", method = RequestMethod.GET)
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
-	public ResourceSupport display(@PathVariable("name") String name) {
+	public ResourceSupport display(@PathVariable("name") String name) throws Exception {
 		final D definition = deployer.findOne(name);
 		if (definition == null) {
 			throw new NoSuchDefinitionException(name, "There is no definition named '%s'");
@@ -234,15 +268,14 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/definitions", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
 	@ResponseBody
-	public R save(@RequestParam("name") String name, @RequestParam("definition") String definition,
-			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) {
-		final D moduleDefinition = createDefinition(name, definition);
-		final D savedModuleDefinition = deployer.save(moduleDefinition);
-		if (deploy) {
-			deployer.deploy(name, Collections.<String, String> emptyMap());
-		}
-		final R result = resourceAssemblerSupport.toResource(savedModuleDefinition);
-		return result;
+	public void save(@RequestParam("name") String name, @RequestParam("definition") String definition,
+			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) throws Exception {
+		DeploymentAction deploymentAction = (deploy) ? DeploymentAction.createAndDeploy : DeploymentAction.create;
+		deployer.preSave(name, definition);
+		deploymentMessageHandler.handleDeploymentMessage(new DeploymentMessage(deploymentUnitType)
+				.setUnitName(name)
+				.setDeploymentAction(deploymentAction)
+				.setDefinition(definition));
 	}
 
 	private ResourceSupport enhanceWithDeployment(D definition, R resource) {
@@ -266,6 +299,10 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 			throw new NothingToDeleteException("Nothing to delete for stream " + stream);
 		}
 		return results;
+	}
+
+	public void setDeploymentMessageHandler(DeploymentMessageHandler deploymentMessageHandler) {
+		this.deploymentMessageHandler = deploymentMessageHandler;
 	}
 
 }

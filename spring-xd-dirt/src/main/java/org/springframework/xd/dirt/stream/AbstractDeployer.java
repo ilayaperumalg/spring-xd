@@ -37,11 +37,12 @@ import org.springframework.util.Assert;
 import org.springframework.xd.dirt.core.BaseDefinition;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.ResourceDeployer;
+import org.springframework.xd.dirt.server.DeploymentHandler;
+import org.springframework.xd.dirt.server.DeploymentUnitType;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDefinition;
-import org.springframework.xd.module.ModuleDefinitions;
 import org.springframework.xd.module.ModuleDescriptor;
 import org.springframework.xd.rest.domain.support.DeploymentPropertiesFormat;
 
@@ -70,6 +71,18 @@ public abstract class AbstractDeployer<D extends BaseDefinition> implements Reso
 	private final ZooKeeperConnection zkConnection;
 
 	protected final XDParser parser;
+
+	private DeploymentHandler deploymentHandler = new DeploymentHandler() {
+		@Override
+		public void deploy(DeploymentUnitType deploymentUnitType, String deploymentUnitName) throws Exception {
+			//
+		}
+
+		@Override
+		public void undeploy(DeploymentUnitType deploymentUnitType, String deploymentUnitName) throws Exception {
+			//
+		}
+	};
 
 	/**
 	 * Used in exception messages as well as indication to the parser.
@@ -259,6 +272,13 @@ public abstract class AbstractDeployer<D extends BaseDefinition> implements Reso
 	 */
 	protected abstract String getDeploymentPath(D definition);
 
+	public void precheckDelete(String name) {
+		D def = getDefinitionRepository().findOne(name);
+		if (def == null) {
+			throwNoSuchDefinitionException(name);
+		}
+	}
+
 	@Override
 	public void delete(String name) {
 		D def = getDefinitionRepository().findOne(name);
@@ -273,6 +293,28 @@ public abstract class AbstractDeployer<D extends BaseDefinition> implements Reso
 	 * Callback method that subclasses may override to get a chance to act on definitions that are about to be deleted.
 	 */
 	protected void beforeDelete(D definition) {
+	}
+
+	public void setDeploymentHandler(DeploymentHandler deploymentHandler) {
+		this.deploymentHandler = deploymentHandler;
+	}
+
+	protected final void deployResource(DeploymentUnitType deploymentUnitType, String deploymentUnitName) {
+		try {
+			deploymentHandler.deploy(deploymentUnitType, deploymentUnitName);
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected final void undeployResource(DeploymentUnitType deploymentUnitType, String deploymentUnitName) {
+		try {
+			deploymentHandler.undeploy(deploymentUnitType, deploymentUnitName);
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 }

@@ -17,6 +17,7 @@ import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.xd.dirt.server.DeploymentHandler;
 import org.springframework.xd.dirt.stream.StreamDefinition;
 
 /**
@@ -76,4 +77,14 @@ public interface ResourceDeployer<R extends BaseDefinition> {
 	 * Undeploy all the deployed resources.
 	 */
 	void undeployAll();
+
+	void preSave(String name, String definition);
+
+	void precheckDeploy(String name, Map<String, String> properties);
+
+	void precheckUndeploy(String name);
+
+	void precheckDelete(String name);
+
+	void setDeploymentHandler(DeploymentHandler deploymentHandler);
 }

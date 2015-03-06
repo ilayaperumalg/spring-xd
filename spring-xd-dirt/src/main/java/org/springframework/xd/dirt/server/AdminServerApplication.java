@@ -174,6 +174,22 @@ public class AdminServerApplication {
 		return adminAttributes;
 	}
 
+	// todo: Move the ZK dependent beans into separate configuration.
+	@Bean
+	public ModuleDeploymentWriter moduleDeploymentWriter() {
+		return new ModuleDeploymentWriter();
+	}
+
+	@Bean
+	public DeploymentSupervisor deploymentSupervisor() {
+		return new DeploymentSupervisor();
+	}
+
+	@Bean
+	public DefaultStateCalculator stateCalculator() {
+		return new DefaultStateCalculator();
+	}
+
 	@Bean
 	@ConditionalOnWebApplication
 	public Filter httpPutFormContentFilter() {

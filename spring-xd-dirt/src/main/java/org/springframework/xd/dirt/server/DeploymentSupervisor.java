@@ -17,6 +17,7 @@
 package org.springframework.xd.dirt.server;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,28 +37,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.embedded.EmbeddedServletContainerInitializedEvent;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.ContextStoppedEvent;
-import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.cluster.Admin;
 import org.springframework.xd.dirt.cluster.AdminAttributes;
-import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.container.store.AdminRepository;
-import org.springframework.xd.dirt.container.store.ContainerRepository;
-import org.springframework.xd.dirt.job.JobFactory;
-import org.springframework.xd.dirt.module.ModuleRegistry;
-import org.springframework.xd.dirt.stream.JobDefinitionRepository;
-import org.springframework.xd.dirt.stream.StreamDefinitionRepository;
-import org.springframework.xd.dirt.stream.StreamFactory;
+import org.springframework.xd.dirt.core.ResourceDeployer;
+import org.springframework.xd.dirt.rest.XDController;
+import org.springframework.xd.dirt.rest.ZKDeploymentMessageHandler;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnectionListener;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
-import org.springframework.xd.module.options.ModuleOptionsMetadataResolver;
 
 /**
  * Process that watches ZooKeeper for Container arrivals and departures from
@@ -81,53 +78,36 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	/**
 	 * ZooKeeper connection.
 	 */
-	private final ZooKeeperConnection zkConnection;
-
-	/**
-	 * Repository to load the containers.
-	 */
-	private final ContainerRepository containerRepository;
+	@Autowired
+	private ZooKeeperConnection zkConnection;
 
 	/**
 	 * Repository to load the admins.
 	 */
-	private final AdminRepository adminRepository;
+	@Autowired
+	private AdminRepository adminRepository;
 
 	/**
 	 * Attributes for admin stored in admin repository.
 	 */
-	private final AdminAttributes adminAttributes;
+	@Autowired
+	private AdminAttributes adminAttributes;
 
-	/**
-	 * Repository to load stream definitions.
-	 */
-	private final StreamDefinitionRepository streamDefinitionRepository;
+	@Autowired
+	private ZKDeploymentUtil zkDeploymentUtil;
 
-	/**
-	 * Repository to load job definitions.
-	 */
-	private final JobDefinitionRepository jobDefinitionRepository;
+	@Autowired
+	private DeploymentQueueConsumer deploymentQueueConsumer;
 
-	/**
-	 * Registry to load module definitions.
-	 */
-	private final ModuleRegistry moduleRegistry;
+	private volatile DeploymentQueue toDeploymentQueue = null;
 
-	/**
-	 * Resolver for module options metadata.
-	 */
-	private final ModuleOptionsMetadataResolver moduleOptionsMetadataResolver;
+	private volatile DeploymentQueue fromDeploymentQueue = null;
 
 	/**
 	 * {@link ApplicationContext} for this admin server. This reference is updated
 	 * via an application context event and read via {@link #getId()}.
 	 */
 	private volatile ApplicationContext applicationContext;
-
-	/**
-	 * Container matcher for matching modules to containers.
-	 */
-	private final ContainerMatcher containerMatcher;
 
 	/**
 	 * Leader selector to elect admin server that will handle stream deployment requests. Marked volatile because this
@@ -156,11 +136,6 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 			Executors.newSingleThreadScheduledExecutor(ThreadUtils.newThreadFactory("DeploymentSupervisor"));
 
 	/**
-	 * State calculator for stream/job state.
-	 */
-	private final DeploymentUnitStateCalculator stateCalculator;
-
-	/**
 	 * Namespace for management context in the container's application context.
 	 */
 	private final static String MGMT_CONTEXT_NAMESPACE = "management";
@@ -178,62 +153,6 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	public static final String QUIET_PERIOD_PROPERTY = "xd.admin.quietPeriod";
 
 	/**
-	 * Amount of time to wait for a status to be written to all module
-	 * deployment request paths.
-	 */
-	private volatile long deploymentTimeout = 30000;
-
-	/**
-	 * Property for specifying the {@link #deploymentTimeout deployment timeout}.
-	 */
-	public static final String DEPLOYMENT_TIMEOUT_PROPERTY = "xd.admin.deploymentTimeout";
-
-	/**
-	 * Construct a {@code DeploymentSupervisor}.
-	 *
-	 * @param zkConnection ZooKeeper connection
-	 * @param containerRepository repository for the containers
-	 * @param adminRepository repository for the admins
-	 * @param adminAttributes attributes for the admin
-	 * @param streamDefinitionRepository repository for streams definitions
-	 * @param jobDefinitionRepository repository for job definitions
-	 * @param moduleRegistry registry for modules
-	 * @param moduleOptionsMetadataResolver resolver for module options metadata
-	 * @param containerMatcher matches modules to containers
-	 * @param stateCalculator calculator for stream/job state
-	 */
-	public DeploymentSupervisor(ZooKeeperConnection zkConnection,
-			ContainerRepository containerRepository,
-			AdminRepository adminRepository,
-			AdminAttributes adminAttributes,
-			StreamDefinitionRepository streamDefinitionRepository,
-			JobDefinitionRepository jobDefinitionRepository,
-			ModuleRegistry moduleRegistry,
-			ModuleOptionsMetadataResolver moduleOptionsMetadataResolver,
-			ContainerMatcher containerMatcher,
-			DeploymentUnitStateCalculator stateCalculator) {
-		Assert.notNull(zkConnection, "ZooKeeperConnection must not be null");
-		Assert.notNull(containerRepository, "ContainerRepository must not be null");
-		Assert.notNull(adminRepository, "Admin repository must not be null");
-		Assert.notNull(adminAttributes, "Admin attributes must not be null");
-		Assert.notNull(streamDefinitionRepository, "StreamDefinitionRepository must not be null");
-		Assert.notNull(moduleRegistry, "moduleRegistry must not be null");
-		Assert.notNull(moduleOptionsMetadataResolver, "moduleOptionsMetadataResolver must not be null");
-		Assert.notNull(containerMatcher, "containerMatcher must not be null");
-		Assert.notNull(stateCalculator, "stateCalculator must not be null");
-		this.zkConnection = zkConnection;
-		this.containerRepository = containerRepository;
-		this.adminRepository = adminRepository;
-		this.adminAttributes = adminAttributes;
-		this.streamDefinitionRepository = streamDefinitionRepository;
-		this.jobDefinitionRepository = jobDefinitionRepository;
-		this.moduleRegistry = moduleRegistry;
-		this.moduleOptionsMetadataResolver = moduleOptionsMetadataResolver;
-		this.containerMatcher = containerMatcher;
-		this.stateCalculator = stateCalculator;
-	}
-
-	/**
 	 * {@inheritDoc}
 	 */
 	@Override
@@ -244,10 +163,6 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 			if (StringUtils.hasText(delay)) {
 				quietPeriod.set(Long.parseLong(delay));
 				logger.info("Set container quiet period to {} ms", delay);
-			}
-			String timeout = this.applicationContext.getEnvironment().getProperty(DEPLOYMENT_TIMEOUT_PROPERTY);
-			if (StringUtils.hasText(timeout)) {
-				deploymentTimeout = Long.parseLong(timeout);
 			}
 			if (this.zkConnection.isConnected()) {
 				if (this.applicationContext.equals(((ContextRefreshedEvent) event).getApplicationContext())) {
@@ -305,6 +220,8 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 			Paths.ensurePath(client, Paths.CONTAINERS);
 			Paths.ensurePath(client, Paths.STREAMS);
 			Paths.ensurePath(client, Paths.JOBS);
+			Paths.ensurePath(client, Paths.DEPLOYMENT_QUEUE);
+			initializeDeploymentQueues(client, false);
 
 			if (leaderSelector == null) {
 				leaderSelector = new LeaderSelector(client, Paths.build(Paths.ADMINELECTION), leaderListener);
@@ -367,7 +284,7 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 				}
 
 				logger.info(String.format("Trying to delete previous registration for admin runtime %s with " +
-						"session %x detected; current session: 0x%x; path: %s",
+								"session %x detected; current session: 0x%x; path: %s",
 						containerId, prevSession, currSession, containerPath));
 				try {
 					client.delete().forPath(containerPath);
@@ -392,6 +309,23 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 		}
 		catch (Exception e) {
 			throw ZooKeeperUtils.wrapThrowable(e);
+		}
+	}
+
+	@SuppressWarnings("rawtypes")
+	private void initializeDeploymentQueues(CuratorFramework client, boolean isConsumer) throws Exception {
+		if (!isConsumer) {
+			this.toDeploymentQueue = new DeploymentQueue(client, null, Paths.DEPLOYMENT_QUEUE);
+			this.toDeploymentQueue.start();
+			Map<String, XDController> controllers = this.applicationContext.getBeansOfType(XDController.class);
+			ZKDeploymentMessageHandler deploymentMessageHandler = new ZKDeploymentMessageHandler(toDeploymentQueue.getDistributedQueue());
+			for (Map.Entry<String, XDController> entry : controllers.entrySet()) {
+				entry.getValue().setDeploymentMessageHandler(deploymentMessageHandler);
+			}
+		}
+		else {
+			this.fromDeploymentQueue = new DeploymentQueue(client, deploymentQueueConsumer, Paths.DEPLOYMENT_QUEUE);
+			this.fromDeploymentQueue.start();
 		}
 	}
 
@@ -466,28 +400,18 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 		 * relinquishment, the listeners will be removed and the caches shut down.
 		 */
 		@Override
+		@SuppressWarnings("rawtypes")
 		public void takeLeadership(CuratorFramework client) throws Exception {
 			logger.info("Leader Admin {} is watching for stream/job deployment requests.", getId());
-
 			cleanupDeployments(client);
-
+			initializeDeploymentQueues(client, true);
 			PathChildrenCache containers = null;
 			PathChildrenCache streamDeployments = null;
 			PathChildrenCache jobDeployments = null;
 			PathChildrenCache moduleDeploymentRequests = null;
-			StreamDeploymentListener streamDeploymentListener;
-			JobDeploymentListener jobDeploymentListener;
 			ContainerListener containerListener;
-			ModuleDeploymentWriter moduleDeploymentWriter;
 
 			try {
-				moduleDeploymentWriter = new ModuleDeploymentWriter(zkConnection, deploymentTimeout);
-				StreamFactory streamFactory = new StreamFactory(streamDefinitionRepository, moduleRegistry,
-						moduleOptionsMetadataResolver);
-
-				JobFactory jobFactory = new JobFactory(jobDefinitionRepository, moduleRegistry,
-						moduleOptionsMetadataResolver);
-
 				String requestedModulesPath = Paths.build(Paths.MODULE_DEPLOYMENTS, Paths.REQUESTED);
 				Paths.ensurePath(client, requestedModulesPath);
 				String allocatedModulesPath = Paths.build(Paths.MODULE_DEPLOYMENTS, Paths.ALLOCATED);
@@ -495,46 +419,28 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 				moduleDeploymentRequests = instantiatePathChildrenCache(client, requestedModulesPath);
 				moduleDeploymentRequests.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
 
-				streamDeploymentListener = new StreamDeploymentListener(zkConnection,
-						moduleDeploymentRequests,
-						containerRepository,
-						streamFactory,
-						containerMatcher,
-						moduleDeploymentWriter,
-						stateCalculator);
-
 				streamDeployments = instantiatePathChildrenCache(client, Paths.STREAM_DEPLOYMENTS);
-				streamDeployments.getListenable().addListener(streamDeploymentListener);
-
-				// using BUILD_INITIAL_CACHE so that all known streams are populated
-				// in the cache before invoking recalculateStreamStates; same for
-				// jobs below
+//				// using BUILD_INITIAL_CACHE so that all known streams are populated
+//				// in the cache before invoking recalculateStreamStates; same for
+//				// jobs below
 				streamDeployments.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
-				streamDeploymentListener.recalculateStreamStates(client, streamDeployments);
-
-				jobDeploymentListener = new JobDeploymentListener(zkConnection,
-						moduleDeploymentRequests,
-						containerRepository,
-						jobFactory,
-						containerMatcher,
-						moduleDeploymentWriter,
-						stateCalculator);
 
 				jobDeployments = instantiatePathChildrenCache(client, Paths.JOB_DEPLOYMENTS);
-				jobDeployments.getListenable().addListener(jobDeploymentListener);
 				jobDeployments.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
-				jobDeploymentListener.recalculateJobStates(client, jobDeployments);
 
-				containerListener = new ContainerListener(zkConnection,
-						containerRepository,
-						streamFactory,
-						jobFactory,
+				ZKDeploymentHandler zkDeploymentHandler = new ZKDeploymentHandler(zkDeploymentUtil, moduleDeploymentRequests);
+				zkDeploymentHandler.recalculateStreamStates(client, streamDeployments);
+				zkDeploymentHandler.recalculateJobStates(client, jobDeployments);
+
+				Map<String, ResourceDeployer> controllers = applicationContext.getBeansOfType(ResourceDeployer.class);
+				for (Map.Entry<String, ResourceDeployer> entry : controllers.entrySet()) {
+					entry.getValue().setDeploymentHandler(zkDeploymentHandler);
+				}
+
+				containerListener = new ContainerListener(zkDeploymentUtil,
 						streamDeployments,
 						jobDeployments,
 						moduleDeploymentRequests,
-						containerMatcher,
-						moduleDeploymentWriter,
-						stateCalculator,
 						executorService,
 						quietPeriod);
 
