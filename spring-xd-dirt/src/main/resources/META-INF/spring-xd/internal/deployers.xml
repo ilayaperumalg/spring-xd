@@ -22,6 +22,7 @@
 		<constructor-arg name="repository" ref="streamDefinitionRepository" />
 		<constructor-arg name="streamRepository" ref="streamRepository" />
 		<constructor-arg name="parser" ref="parser" />
+		<constructor-arg name="distributedQueue" ref="distributedQueue"/>
 	</bean>
 
 	<bean id="jobDeployer" class="org.springframework.xd.dirt.stream.JobDeployer">
@@ -30,6 +31,12 @@
 		<constructor-arg name="instanceRepository" ref="xdJobRepository" />
 		<constructor-arg name="parser" ref="parser" />
 		<constructor-arg name="messageBus" ref="messageBus" />
+		<constructor-arg name="distributedQueue" ref="distributedQueue"/>
+	</bean>
+
+	<bean id="distributedQueue" class="org.springframework.xd.dirt.server.DeploymentQueue">
+		<constructor-arg ref="zooKeeperConnection"/>
+		<constructor-arg name="queueConsumer" ref="deploymentSupervisor"/>
 	</bean>
 
 </beans>

@@ -60,20 +60,20 @@ public class JobsController extends
 	@Autowired
 	public JobsController(JobDeployer jobDeployer,
 			JobDefinitionRepository jobDefinitionRepository) {
-		super(jobDeployer, new JobDefinitionResourceAssembler());
+		super(jobDeployer, new JobDefinitionResourceAssembler(), "job");
 	}
 
 	@Override
 	@RequestMapping(value = "/definitions", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
 	@ResponseBody
-	public JobDefinitionResource save(@RequestParam("name") String name, @RequestParam("definition") String definition,
-			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) {
+	public void save(@RequestParam("name") String name, @RequestParam("definition") String definition,
+			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) throws Exception {
 		// Verify if the batch job repository already has the job with the same name.
 		if (distributedJobLocator.getJobNames().contains(name)) {
 			throw new BatchJobAlreadyExistsException(name);
 		}
-		return super.save(name, definition, deploy);
+		super.save(name, definition, deploy);
 	}
 
 	/**

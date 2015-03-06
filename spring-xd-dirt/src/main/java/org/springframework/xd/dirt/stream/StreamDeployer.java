@@ -18,16 +18,8 @@ package org.springframework.xd.dirt.stream;
 
 import static org.springframework.xd.dirt.stream.ParsingContext.stream;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.xd.dirt.stream.dsl.StreamDefinitionException;
-import org.springframework.xd.dirt.stream.dsl.XDDSLMessages;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
-import org.springframework.xd.module.ModuleDefinition;
-import org.springframework.xd.module.ModuleDefinitions;
-import org.springframework.xd.module.ModuleDescriptor;
 
 /**
  * Default implementation of {@link StreamDeployer} that uses provided

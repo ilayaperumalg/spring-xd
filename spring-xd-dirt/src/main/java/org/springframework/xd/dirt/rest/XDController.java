@@ -17,10 +17,11 @@
 package org.springframework.xd.dirt.rest;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.curator.framework.recipes.queue.DistributedQueue;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -41,6 +42,8 @@ import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.ResourceDeployer;
 import org.springframework.xd.dirt.integration.bus.rabbit.NothingToDeleteException;
 import org.springframework.xd.dirt.integration.bus.rabbit.RabbitBusCleaner;
+import org.springframework.xd.dirt.server.DeploymentMessage;
+import org.springframework.xd.dirt.server.DeploymentQueue;
 import org.springframework.xd.dirt.stream.AbstractDeployer;
 import org.springframework.xd.dirt.stream.AbstractInstancePersistingDeployer;
 import org.springframework.xd.dirt.stream.BaseInstance;
@@ -70,6 +73,10 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 
 	private final RabbitBusCleaner busCleaner = new RabbitBusCleaner();
 
+	private DistributedQueue deploymentQueue;
+
+	private final String deploymentUnit;
+
 	/**
 	 * Data holder class for controlling how the list methods should behave.
 	 *
@@ -93,9 +100,10 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 		}
 	}
 
-	protected XDController(AbstractDeployer<D> deployer, A resourceAssemblerSupport) {
+	protected XDController(AbstractDeployer<D> deployer, A resourceAssemblerSupport, String deploymentUnit) {
 		this.deployer = deployer;
 		this.resourceAssemblerSupport = resourceAssemblerSupport;
+		this.deploymentUnit = deploymentUnit;
 	}
 
 	protected ResourceDeployer<D> getDeployer() {
@@ -109,8 +117,9 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	 */
 	@RequestMapping(value = "/definitions/{name}", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
-	public void delete(@PathVariable("name") String name) {
-		deployer.delete(name);
+	public void delete(@PathVariable("name") String name) throws Exception {
+		deploymentQueue.put(new DeploymentMessage(deploymentUnit, name, null, "destroy", null));
+		//deployer.delete(name);
 	}
 
 	/**
@@ -129,8 +138,9 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	 */
 	@RequestMapping(value = "/deployments/{name}", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
-	public void undeploy(@PathVariable("name") String name) {
-		deployer.undeploy(name);
+	public void undeploy(@PathVariable("name") String name) throws Exception {
+		deploymentQueue.put(new DeploymentMessage(deploymentUnit, name, null, "undeploy", null));
+		//deployer.undeploy(name);
 	}
 
 	/**
@@ -138,8 +148,9 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	 */
 	@RequestMapping(value = "/deployments", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
-	public void undeployAll() {
-		deployer.undeployAll();
+	public void undeployAll() throws Exception {
+		deploymentQueue.put(new DeploymentMessage(deploymentUnit, null, null, "undeployAll", null));
+		//deployer.undeployAll();
 	}
 
 	/**
@@ -152,8 +163,9 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/deployments/{name}", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
 	@ResponseBody
-	public void deploy(@PathVariable("name") String name, @RequestParam(required = false) String properties) {
-		deployer.deploy(name, DeploymentPropertiesFormat.parseDeploymentProperties(properties));
+	public void deploy(@PathVariable("name") String name, @RequestParam(required = false) String properties) throws Exception {
+		deploymentQueue.put(new DeploymentMessage(deploymentUnit, name, null, "deploy", DeploymentPropertiesFormat.parseDeploymentProperties(properties)));
+		//deployer.deploy(name, DeploymentPropertiesFormat.parseDeploymentProperties(properties));
 	}
 
 	/**
@@ -164,7 +176,7 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/definitions/{name}", method = RequestMethod.GET)
 	@ResponseStatus(HttpStatus.OK)
 	@ResponseBody
-	public ResourceSupport display(@PathVariable("name") String name) {
+	public ResourceSupport display(@PathVariable("name") String name) throws Exception {
 		final D definition = deployer.findOne(name);
 		if (definition == null) {
 			throw new NoSuchDefinitionException(name, "There is no definition named '%s'");
@@ -234,15 +246,10 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/definitions", method = RequestMethod.POST)
 	@ResponseStatus(HttpStatus.CREATED)
 	@ResponseBody
-	public R save(@RequestParam("name") String name, @RequestParam("definition") String definition,
-			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) {
-		final D moduleDefinition = createDefinition(name, definition);
-		final D savedModuleDefinition = deployer.save(moduleDefinition);
-		if (deploy) {
-			deployer.deploy(name, Collections.<String, String> emptyMap());
-		}
-		final R result = resourceAssemblerSupport.toResource(savedModuleDefinition);
-		return result;
+	public void save(@RequestParam("name") String name, @RequestParam("definition") String definition,
+			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) throws Exception {
+		String action = (deploy) ? "createAndDeploy" : "create";
+		deploymentQueue.put(new DeploymentMessage(deploymentUnit, name, definition, action, null));
 	}
 
 	private ResourceSupport enhanceWithDeployment(D definition, R resource) {
@@ -266,6 +273,10 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 			throw new NothingToDeleteException("Nothing to delete for stream " + stream);
 		}
 		return results;
+	}
+
+	public void setDeploymentQueue(DeploymentQueue deploymentQueue) {
+		this.deploymentQueue = deploymentQueue.getDistributedQueue();
 	}
 
 }

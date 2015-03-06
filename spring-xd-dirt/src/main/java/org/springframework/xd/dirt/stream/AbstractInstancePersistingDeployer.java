@@ -18,6 +18,7 @@ package org.springframework.xd.dirt.stream;
 
 import java.util.Map;
 
+import org.apache.curator.framework.recipes.queue.DistributedQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +81,6 @@ public abstract class AbstractInstancePersistingDeployer<D extends BaseDefinitio
 
 	@Override
 	public void deploy(String name, Map<String, String> properties) {
-
 		Assert.hasText(name, "name cannot be blank or null");
 		Assert.notNull(properties, "properties cannot be null");
 

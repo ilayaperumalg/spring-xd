@@ -55,7 +55,7 @@ public class StreamsController extends
 
 	@Autowired
 	public StreamsController(StreamDeployer streamDeployer, StreamDefinitionRepository streamDefinitionRepository) {
-		super(streamDeployer, new StreamDefinitionResourceAssembler());
+		super(streamDeployer, new StreamDefinitionResourceAssembler(), "stream");
 	}
 
 	/**

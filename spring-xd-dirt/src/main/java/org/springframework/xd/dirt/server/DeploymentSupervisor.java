@@ -17,9 +17,11 @@
 package org.springframework.xd.dirt.server;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.curator.framework.CuratorFramework;
@@ -43,15 +45,18 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.cluster.Admin;
 import org.springframework.xd.dirt.cluster.AdminAttributes;
-import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.container.store.AdminRepository;
 import org.springframework.xd.dirt.container.store.ContainerRepository;
 import org.springframework.xd.dirt.job.JobFactory;
 import org.springframework.xd.dirt.module.ModuleRegistry;
+import org.springframework.xd.dirt.rest.XDController;
 import org.springframework.xd.dirt.stream.JobDefinitionRepository;
+import org.springframework.xd.dirt.stream.JobDeployer;
 import org.springframework.xd.dirt.stream.StreamDefinitionRepository;
+import org.springframework.xd.dirt.stream.StreamDeployer;
 import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
@@ -136,6 +141,10 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	 */
 	private volatile LeaderSelector leaderSelector;
 
+	private final StreamDeployer streamDeployer;
+
+	private final JobDeployer jobDeployer;
+
 	/**
 	 * Listener that is invoked when this admin server is elected leader.
 	 */
@@ -188,6 +197,12 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	 */
 	public static final String DEPLOYMENT_TIMEOUT_PROPERTY = "xd.admin.deploymentTimeout";
 
+	private volatile DeploymentQueue deploymentQueueWithoutConsumer = null;
+
+	private volatile DeploymentQueue deploymentQueueWithConsumer = null;
+
+	private AtomicBoolean isAdmin = new AtomicBoolean(false);
+
 	/**
 	 * Construct a {@code DeploymentSupervisor}.
 	 *
@@ -211,7 +226,9 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 			ModuleRegistry moduleRegistry,
 			ModuleOptionsMetadataResolver moduleOptionsMetadataResolver,
 			ContainerMatcher containerMatcher,
-			DeploymentUnitStateCalculator stateCalculator) {
+			DeploymentUnitStateCalculator stateCalculator,
+			StreamDeployer streamDeployer,
+			JobDeployer jobDeployer) {
 		Assert.notNull(zkConnection, "ZooKeeperConnection must not be null");
 		Assert.notNull(containerRepository, "ContainerRepository must not be null");
 		Assert.notNull(adminRepository, "Admin repository must not be null");
@@ -231,6 +248,8 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 		this.moduleOptionsMetadataResolver = moduleOptionsMetadataResolver;
 		this.containerMatcher = containerMatcher;
 		this.stateCalculator = stateCalculator;
+		this.streamDeployer = streamDeployer;
+		this.jobDeployer = jobDeployer;
 	}
 
 	/**
@@ -305,6 +324,8 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 			Paths.ensurePath(client, Paths.CONTAINERS);
 			Paths.ensurePath(client, Paths.STREAMS);
 			Paths.ensurePath(client, Paths.JOBS);
+			Paths.ensurePath(client, Paths.DEPLOYMENT_QUEUE);
+			initializeDeploymentQueues(client, false);
 
 			if (leaderSelector == null) {
 				leaderSelector = new LeaderSelector(client, Paths.build(Paths.ADMINELECTION), leaderListener);
@@ -367,7 +388,7 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 				}
 
 				logger.info(String.format("Trying to delete previous registration for admin runtime %s with " +
-						"session %x detected; current session: 0x%x; path: %s",
+								"session %x detected; current session: 0x%x; path: %s",
 						containerId, prevSession, currSession, containerPath));
 				try {
 					client.delete().forPath(containerPath);
@@ -392,6 +413,25 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 		}
 		catch (Exception e) {
 			throw ZooKeeperUtils.wrapThrowable(e);
+		}
+	}
+
+	private void initializeDeploymentQueues(CuratorFramework client, boolean isLeader) throws Exception {
+		DeploymentQueue deploymentQueue;
+		if (!isLeader) {
+			this.deploymentQueueWithoutConsumer = new DeploymentQueue(client, null, Paths.DEPLOYMENT_QUEUE);
+			this.deploymentQueueWithoutConsumer.start();
+			deploymentQueue = this.deploymentQueueWithoutConsumer;
+		}
+		else {
+			DeploymentQueueConsumer queueConsumer = new DeploymentQueueConsumer(streamDeployer, jobDeployer);
+			this.deploymentQueueWithConsumer = new DeploymentQueue(client, queueConsumer, Paths.DEPLOYMENT_QUEUE);
+			this.deploymentQueueWithConsumer.start();
+			deploymentQueue = this.deploymentQueueWithConsumer;
+		}
+		Map<String, XDController> controllerMap = this.applicationContext.getBeansOfType(XDController.class);
+		for (Map.Entry<String, XDController> entry: controllerMap.entrySet()) {
+			entry.getValue().setDeploymentQueue(deploymentQueue);
 		}
 	}
 
@@ -468,8 +508,8 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 		@Override
 		public void takeLeadership(CuratorFramework client) throws Exception {
 			logger.info("Leader Admin {} is watching for stream/job deployment requests.", getId());
-
 			cleanupDeployments(client);
+			initializeDeploymentQueues(client, true);
 
 			PathChildrenCache containers = null;
 			PathChildrenCache streamDeployments = null;

@@ -191,4 +191,5 @@ public class AdminServerApplication {
 	public BatchDatabaseInitializer batchDatabaseInitializer() {
 		return new XdBatchDatabaseInitializer();
 	}
+
 }
