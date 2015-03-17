@@ -43,9 +43,10 @@ import org.springframework.xd.dirt.integration.bus.rabbit.NothingToDeleteExcepti
 import org.springframework.xd.dirt.integration.bus.rabbit.RabbitBusCleaner;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentAction;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessageProducer;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitType;
-import org.springframework.xd.dirt.stream.AbstractZKDeployer;
 import org.springframework.xd.dirt.stream.AbstractInstancePersistingZKDeployer;
+import org.springframework.xd.dirt.stream.AbstractZKDeployer;
 import org.springframework.xd.dirt.stream.BaseInstance;
 import org.springframework.xd.dirt.stream.NoSuchDefinitionException;
 import org.springframework.xd.rest.domain.DeployableResource;
@@ -105,10 +106,6 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 		this.deployer = deployer;
 		this.resourceAssemblerSupport = resourceAssemblerSupport;
 		this.deploymentUnitType = deploymentUnitType;
-	}
-
-	protected ResourceDeployer<D> getDeployer() {
-		return deployer;
 	}
 
 	/**

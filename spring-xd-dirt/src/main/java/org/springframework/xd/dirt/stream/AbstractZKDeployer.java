@@ -36,8 +36,8 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.util.Assert;
 import org.springframework.xd.dirt.core.BaseDefinition;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
+import org.springframework.xd.dirt.core.PreDeploymentValidator;
 import org.springframework.xd.dirt.core.ResourceDeployer;
-import org.springframework.xd.dirt.core.ResourcePreDeployer;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
@@ -55,7 +55,7 @@ import org.springframework.xd.rest.domain.support.DeploymentPropertiesFormat;
  * @author Andy Clement
  * @author David Turanski
  */
-public abstract class AbstractZKDeployer<D extends BaseDefinition> implements ResourceDeployer<D>, ResourcePreDeployer {
+public abstract class AbstractZKDeployer<D extends BaseDefinition> implements ResourceDeployer<D>, PreDeploymentValidator {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractZKDeployer.class);
 

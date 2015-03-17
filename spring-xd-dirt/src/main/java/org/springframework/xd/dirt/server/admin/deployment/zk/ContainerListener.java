@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -49,13 +49,13 @@ public class ContainerListener implements PathChildrenCacheListener {
 	private final Logger logger = LoggerFactory.getLogger(ContainerListener.class);
 
 	/**
-	 * The {@link org.springframework.xd.dirt.server.admin.deployment.ModuleRedeployer} that deploys unallocated stream/job modules
+	 * The {@link ModuleRedeployer} that deploys unallocated stream/job modules
 	 * upon new container arrival.
 	 */
 	private final ContainerMatchingModuleRedeployer containerMatchingModuleRedeployer;
 
 	/**
-	 * The {@link org.springframework.xd.dirt.server.admin.deployment.ModuleRedeployer} that re-deploys the stream/job modules
+	 * The {@link ModuleRedeployer} that re-deploys the stream/job modules
 	 * that were deployed at the departing container.
 	 */
 	private final ModuleRedeployer departingContainerModuleRedeployer;

@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.Collections;
 
@@ -22,6 +22,8 @@ import org.apache.curator.framework.state.ConnectionState;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.xd.dirt.core.ResourceDeployer;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentAction;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage;
 import org.springframework.xd.dirt.stream.JobDefinition;
 import org.springframework.xd.dirt.stream.ZKJobDeployer;
 import org.springframework.xd.dirt.stream.StreamDefinition;

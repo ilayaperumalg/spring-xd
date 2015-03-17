@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.io.IOException;
 
@@ -22,6 +22,7 @@ import org.apache.curator.framework.recipes.queue.QueueSerializer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 
@@ -105,8 +106,7 @@ public class DeploymentQueue implements InitializingBean, DisposableBean {
 
 
 	/**
-	 * The queue serializer implementation to serialize/de-serialize
-	 * {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage}
+	 * The queue serializer implementation to serialize/de-serialize {@link DeploymentMessage}
 	 */
 	private class DeploymentMessageSerializer implements QueueSerializer<DeploymentMessage> {
 

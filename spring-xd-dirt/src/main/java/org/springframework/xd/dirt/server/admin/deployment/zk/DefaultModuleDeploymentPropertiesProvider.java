@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.xd.dirt.core.DeploymentUnit;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentPropertiesProvider;
 import org.springframework.xd.dirt.util.DeploymentPropertiesUtility;
 import org.springframework.xd.module.ModuleDeploymentProperties;
 import org.springframework.xd.module.ModuleDescriptor;

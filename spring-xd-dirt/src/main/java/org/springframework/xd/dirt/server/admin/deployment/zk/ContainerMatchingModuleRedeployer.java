@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.HashSet;
 import java.util.List;
@@ -39,7 +39,7 @@ import org.springframework.xd.module.RuntimeModuleDeploymentProperties;
 
 
 /**
- * The {@link org.springframework.xd.dirt.server.admin.deployment.ModuleRedeployer} that deploys the unallocated stream/job modules.
+ * The {@link ModuleRedeployer} that deploys the unallocated stream/job modules.
  *
  * @author Patrick Peralta
  * @author Mark Fisher

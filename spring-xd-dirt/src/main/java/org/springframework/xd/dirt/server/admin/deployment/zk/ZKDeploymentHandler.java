@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -35,6 +35,9 @@ import org.springframework.xd.dirt.core.ModuleDeploymentRequestsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
 import org.springframework.xd.dirt.job.JobFactory;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentHandler;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitStateCalculator;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;
 import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.ChildPathIterator;
 import org.springframework.xd.dirt.zookeeper.Paths;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.Collection;
 import java.util.EnumSet;
@@ -35,6 +35,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.cluster.NoContainerException;
 import org.springframework.xd.dirt.core.ModuleDeploymentsPath;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentPropertiesProvider;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
@@ -48,7 +50,7 @@ import org.springframework.xd.module.RuntimeModuleDeploymentProperties;
  * There are several {@code writeDeployment} methods that allow for targeting
  * a deployment to a specific container or a collection of containers.
  * <p/>
- * General usage is to invoke {@code writeDeployment} and examine the {@link ModuleDeploymentStatus}
+ * General usage is to invoke {@code writeDeployment} and examine the {@link org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus}
  * object that is returned. This invocation will block until:
  * <ul>
  *     <li>all containers have "responded" by updating the ZooKeeper nodes</li>
@@ -61,7 +63,7 @@ import org.springframework.xd.module.RuntimeModuleDeploymentProperties;
  * @author Patrick Peralta
  * @author Ilayaperumal Gopinathan
  *
- * @see DeploymentUnitStateCalculator
+ * @see org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitStateCalculator
  */
 public class ModuleDeploymentWriter {
 
