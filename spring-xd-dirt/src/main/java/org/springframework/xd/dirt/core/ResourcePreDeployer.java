@@ -15,7 +15,7 @@ package org.springframework.xd.dirt.core;
 import java.util.Map;
 
 /**
- * This interface sets up some checker methods that need to be implemented before producing the
+ * This interface sets up validation methods that need to be implemented before producing the
  * {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage}s.
  *
  * @author Ilayaperumal Gopinathan

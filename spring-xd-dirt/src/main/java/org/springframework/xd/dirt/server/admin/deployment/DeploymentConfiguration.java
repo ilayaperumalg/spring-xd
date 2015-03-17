@@ -103,12 +103,6 @@ public class DeploymentConfiguration {
 	}
 
 	@Bean
-	public ZKDeploymentUtility zkDeploymentUtility() {
-		return new ZKDeploymentUtility(zkConnection, containerRepository, moduleDeploymentWriter, streamFactory(),
-				jobFactory(), containerMatcher, deploymentUnitStateCalculator());
-	}
-
-	@Bean
 	public StreamDeploymentHandler streamDeploymentHandler() {
 		return new StreamDeploymentHandler();
 	}

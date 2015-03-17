@@ -56,12 +56,10 @@ public class DepartingContainerModuleRedeployer extends ModuleRedeployer {
 	/**
 	 * Constructs {@code DepartingContainerModuleRedeployer}
 	 *
-	 * @param zkDeploymentUtility Zookeeper deployment utility
 	 * @param moduleDeploymentRequests cache of children for requested module deployments path
 	 */
-	public DepartingContainerModuleRedeployer(ZKDeploymentUtility zkDeploymentUtility,
-			PathChildrenCache moduleDeploymentRequests) {
-		super(zkDeploymentUtility, moduleDeploymentRequests);
+	public DepartingContainerModuleRedeployer(PathChildrenCache moduleDeploymentRequests) {
+		super(moduleDeploymentRequests);
 	}
 
 	/**
@@ -104,7 +102,7 @@ public class DepartingContainerModuleRedeployer extends ModuleRedeployer {
 			String moduleType = moduleDeploymentsPath.getModuleType();
 
 			if (ModuleType.job.toString().equals(moduleType)) {
-				Job job = DeploymentLoader.loadJob(client, unitName, zkDeploymentUtility.getJobFactory());
+				Job job = DeploymentLoader.loadJob(client, unitName, jobFactory);
 				if (job != null) {
 					redeployModule(new ModuleDeployment(job, job.getJobModuleDescriptor(),
 							deploymentProperties), false);
@@ -113,7 +111,7 @@ public class DepartingContainerModuleRedeployer extends ModuleRedeployer {
 			else {
 				Stream stream = streamMap.get(unitName);
 				if (stream == null) {
-					stream = DeploymentLoader.loadStream(client, unitName, zkDeploymentUtility.getStreamFactory());
+					stream = DeploymentLoader.loadStream(client, unitName, streamFactory);
 					streamMap.put(unitName, stream);
 				}
 				if (stream != null) {

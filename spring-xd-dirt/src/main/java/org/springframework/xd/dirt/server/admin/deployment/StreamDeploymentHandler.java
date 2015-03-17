@@ -43,7 +43,7 @@ public class StreamDeploymentHandler extends ZKDeploymentHandler {
 	/**
 	 * Logger.
 	 */
-	private static final Logger logger = LoggerFactory.getLogger(ZKDeploymentHandler.class);
+	private static final Logger logger = LoggerFactory.getLogger(StreamDeploymentHandler.class);
 
 	/**
 	 * Deploy the stream with the given name.
@@ -51,8 +51,8 @@ public class StreamDeploymentHandler extends ZKDeploymentHandler {
 	 * @throws Exception
 	 */
 	public void deploy(String streamName) throws Exception {
-		CuratorFramework client = zkDeploymentUtility.getZkConnection().getClient();
-		deployStream(client, DeploymentLoader.loadStream(client, streamName, zkDeploymentUtility.getStreamFactory()));
+		CuratorFramework client = zkConnection.getClient();
+		deployStream(client, DeploymentLoader.loadStream(client, streamName, streamFactory));
 	}
 
 	/**
@@ -118,8 +118,8 @@ public class StreamDeploymentHandler extends ZKDeploymentHandler {
 
 				try {
 					// find the containers that can deploy these modules
-					Collection<Container> containers = zkDeploymentUtility.getContainerMatcher().match(descriptor, deploymentProperties,
-							zkDeploymentUtility.getContainerRepository().findAll());
+					Collection<Container> containers = containerMatcher.match(descriptor, deploymentProperties,
+							containerRepository.findAll());
 
 					// write out the deployment requests targeted to the containers obtained above;
 					// a new instance of StreamPartitionPropertiesProvider is created since this
@@ -127,7 +127,7 @@ public class StreamDeploymentHandler extends ZKDeploymentHandler {
 					StreamRuntimePropertiesProvider deploymentRuntimeProvider =
 							new StreamRuntimePropertiesProvider(stream, deploymentPropertiesProvider);
 
-					deploymentStatuses.addAll(zkDeploymentUtility.getModuleDeploymentWriter().writeDeployment(
+					deploymentStatuses.addAll(moduleDeploymentWriter.writeDeployment(
 							descriptor, deploymentRuntimeProvider, containers));
 				}
 				catch (NoContainerException e) {
@@ -136,7 +136,7 @@ public class StreamDeploymentHandler extends ZKDeploymentHandler {
 				}
 			}
 
-			DeploymentUnitStatus status = zkDeploymentUtility.getStateCalculator().calculate(stream, deploymentPropertiesProvider,
+			DeploymentUnitStatus status = stateCalculator.calculate(stream, deploymentPropertiesProvider,
 					deploymentStatuses);
 			logger.info("Deployment status for stream '{}': {}", stream.getName(), status);
 

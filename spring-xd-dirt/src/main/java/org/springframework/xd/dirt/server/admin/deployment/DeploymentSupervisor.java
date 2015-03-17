@@ -86,12 +86,6 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	private AdminRepository adminRepository;
 
 	/**
-	 * Deployment utility that holds the necessary singletons for ZK based deployments.
-	 */
-	@Autowired
-	private ZKDeploymentUtility zkDeploymentUtility;
-
-	/**
 	 * Consumer for {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage}s.
 	 */
 	@Autowired
@@ -424,16 +418,17 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 				jobDeployments.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
 
 
+				// Set the ModuleDeploymentRequests path children cache to the underlying
+				// ZK based deployment handlers.
 				Map<String, ZKDeploymentHandler> zkDeploymentHandlerMap = applicationContext.getBeansOfType(ZKDeploymentHandler.class);
 				for (Map.Entry<String, ZKDeploymentHandler> entry : zkDeploymentHandlerMap.entrySet()) {
 					ZKDeploymentHandler zkDeploymentHandler = entry.getValue();
-					zkDeploymentHandler.setModuleDeploymentRequestsPath(moduleDeploymentRequests);
+					zkDeploymentHandler.setModuleDeploymentRequests(moduleDeploymentRequests);
 					zkDeploymentHandler.recalculateStreamStates(client, streamDeployments);
 					zkDeploymentHandler.recalculateJobStates(client, jobDeployments);
 				}
 
-				containerListener = new ContainerListener(zkDeploymentUtility,
-						streamDeployments,
+				containerListener = new ContainerListener(streamDeployments,
 						jobDeployments,
 						moduleDeploymentRequests,
 						executorService,
