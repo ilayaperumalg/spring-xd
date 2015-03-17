@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.Map;
 
@@ -35,9 +35,9 @@ import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
  * with {@link org.springframework.xd.dirt.stream.zookeeper.ZooKeeperStreamRepository}
  * and {@link org.springframework.xd.dirt.stream.zookeeper.ZooKeeperJobRepository}.
  *
- * @see ContainerListener
- * @see org.springframework.xd.dirt.server.JobDeploymentListener
- * @see org.springframework.xd.dirt.server.StreamDeploymentListener
+ * @see org.springframework.xd.dirt.server.admin.deployment.zk.ContainerListener
+ * @see org.springframework.xd.dirt.server.admin.deployment.zk.ZKStreamDeploymentHandler
+ * @see org.springframework.xd.dirt.server.admin.deployment.zk.ZKJobDeploymentHandler
  *
  * @author Patrick Peralta
  * @author Ilayaperumal Gopinathan

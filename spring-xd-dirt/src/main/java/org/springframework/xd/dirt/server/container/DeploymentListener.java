@@ -44,7 +44,7 @@ import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
 import org.springframework.xd.dirt.job.JobFactory;
 import org.springframework.xd.dirt.module.ModuleDeployer;
-import org.springframework.xd.dirt.server.admin.deployment.DeploymentLoader;
+import org.springframework.xd.dirt.server.admin.deployment.zk.DeploymentLoader;
 import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;
 import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.Paths;

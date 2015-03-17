@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +39,7 @@ import org.springframework.xd.module.RuntimeModuleDeploymentProperties;
 
 
 /**
- * The {@link org.springframework.xd.dirt.server.admin.deployment.ModuleRedeployer} that re-deploys the stream/job modules that were
+ * The {@link ModuleRedeployer} that re-deploys the stream/job modules that were
  * deployed into the departing container.
  *
  * @author Patrick Peralta

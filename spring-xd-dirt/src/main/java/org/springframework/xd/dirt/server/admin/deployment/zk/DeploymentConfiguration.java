@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.autoconfigure.AuditAutoConfiguration;
@@ -21,12 +21,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.xd.dirt.cluster.AdminAttributes;
 import org.springframework.xd.dirt.container.store.AdminRepository;
-import org.springframework.xd.dirt.container.store.ContainerRepository;
 import org.springframework.xd.dirt.container.store.ZooKeeperAdminRepository;
 import org.springframework.xd.dirt.integration.bus.MessageBus;
 import org.springframework.xd.dirt.job.JobFactory;
 import org.springframework.xd.dirt.module.ModuleRegistry;
-import org.springframework.xd.dirt.rest.ZKDeploymentMessageProducer;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitStateCalculator;
 import org.springframework.xd.dirt.stream.JobDefinitionRepository;
 import org.springframework.xd.dirt.stream.JobRepository;
 import org.springframework.xd.dirt.stream.StreamDefinitionRepository;
@@ -51,15 +50,6 @@ public class DeploymentConfiguration {
 
 	@Autowired
 	private ZooKeeperConnection zkConnection;
-
-	@Autowired
-	private ContainerRepository containerRepository;
-
-	@Autowired
-	private ModuleDeploymentWriter moduleDeploymentWriter;
-
-	@Autowired
-	private ContainerMatcher containerMatcher;
 
 	@Autowired
 	private StreamDefinitionRepository streamDefinitionRepository;
@@ -103,8 +93,8 @@ public class DeploymentConfiguration {
 	}
 
 	@Bean
-	public StreamDeploymentHandler streamDeploymentHandler() {
-		return new StreamDeploymentHandler();
+	public ZKStreamDeploymentHandler streamDeploymentHandler() {
+		return new ZKStreamDeploymentHandler();
 	}
 
 	@Bean
@@ -114,8 +104,8 @@ public class DeploymentConfiguration {
 	}
 
 	@Bean
-	public JobDeploymentHandler jobDeploymentHandler() {
-		return new JobDeploymentHandler();
+	public ZKJobDeploymentHandler jobDeploymentHandler() {
+		return new ZKJobDeploymentHandler();
 	}
 
 	@Bean
@@ -153,8 +143,8 @@ public class DeploymentConfiguration {
 	}
 
 	@Bean
-	public ZKDeploymentMessageProducer deploymentMessageProducer() {
-		return new ZKDeploymentMessageProducer(deploymentQueue());
+	public DeploymentMessageProducerImpl deploymentMessageProducer() {
+		return new DeploymentMessageProducerImpl(deploymentQueue());
 	}
 
 	@Bean

@@ -50,7 +50,7 @@ import org.springframework.xd.dirt.rest.RestConfiguration;
 import org.springframework.xd.dirt.server.MessageBusClassLoaderFactory;
 import org.springframework.xd.dirt.server.ParentConfiguration;
 import org.springframework.xd.dirt.server.SharedServerContextConfiguration;
-import org.springframework.xd.dirt.server.admin.deployment.DeploymentConfiguration;
+import org.springframework.xd.dirt.server.admin.deployment.zk.DeploymentConfiguration;
 import org.springframework.xd.dirt.server.options.AdminOptions;
 import org.springframework.xd.dirt.server.options.CommandLinePropertySourceOverridingListener;
 import org.springframework.xd.dirt.util.BannerUtils;

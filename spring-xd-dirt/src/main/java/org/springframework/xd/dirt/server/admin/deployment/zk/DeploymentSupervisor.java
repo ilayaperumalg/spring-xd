@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -97,7 +97,7 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	private final AdminAttributes adminAttributes;
 
 	/**
-	 * ZK distributed queue for the {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessageConsumer}
+	 * ZK distributed queue for the {@link DeploymentMessageConsumer}
 	 * to use.
 	 */
 	private volatile DeploymentQueue deploymentQueueForConsumer = null;

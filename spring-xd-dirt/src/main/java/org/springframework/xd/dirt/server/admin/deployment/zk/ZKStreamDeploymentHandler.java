@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -26,6 +26,8 @@ import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.cluster.NoContainerException;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.Stream;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;
+import org.springframework.xd.dirt.server.admin.deployment.StreamRuntimePropertiesProvider;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDeploymentProperties;
@@ -38,12 +40,12 @@ import org.springframework.xd.module.ModuleDescriptor;
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
  */
-public class StreamDeploymentHandler extends ZKDeploymentHandler {
+public class ZKStreamDeploymentHandler extends ZKDeploymentHandler {
 
 	/**
 	 * Logger.
 	 */
-	private static final Logger logger = LoggerFactory.getLogger(StreamDeploymentHandler.class);
+	private static final Logger logger = LoggerFactory.getLogger(ZKStreamDeploymentHandler.class);
 
 	/**
 	 * Deploy the stream with the given name.

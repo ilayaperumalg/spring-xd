@@ -10,24 +10,37 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.rest;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import org.apache.curator.framework.recipes.queue.DistributedQueue;
 
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage;
-import org.springframework.xd.dirt.server.admin.deployment.DeploymentQueue;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessageProducer;
 
 /**
+ * ZooKeeper based {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessageProducer} that sends the {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage} into
+ * ZK distributed queue.
+ *
  * @author Ilayaperumal Gopinathan
  */
-public class ZKDeploymentMessageProducer implements DeploymentMessageProducer {
+public class DeploymentMessageProducerImpl implements DeploymentMessageProducer {
 
 	private final DistributedQueue<DeploymentMessage> distributedQueue;
 
-	public ZKDeploymentMessageProducer(DeploymentQueue deploymentQueue) {
+	/**
+	 * Construct the deployment message producer.
+	 *
+	 * @param deploymentQueue the deployment queue
+	 */
+	public DeploymentMessageProducerImpl(DeploymentQueue deploymentQueue) {
 		this.distributedQueue = deploymentQueue.getDistributedQueue();
 	}
 
+	/**
+	 * Produces the deployment message into ZK distributed queue.
+	 *
+	 * @param deploymentMessage the deployment message
+	 */
 	@Override
 	public void produceDeploymentMessage(DeploymentMessage deploymentMessage) {
 		try {

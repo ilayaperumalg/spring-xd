@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -27,6 +27,9 @@ import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.cluster.NoContainerException;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.Job;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentPropertiesProvider;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;
+import org.springframework.xd.dirt.server.admin.deployment.RuntimeModuleDeploymentPropertiesProvider;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDeploymentProperties;
@@ -40,12 +43,12 @@ import org.springframework.xd.module.RuntimeModuleDeploymentProperties;
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
  */
-public class JobDeploymentHandler extends ZKDeploymentHandler {
+public class ZKJobDeploymentHandler extends ZKDeploymentHandler {
 
 	/**
 	 * Logger.
 	 */
-	private static final Logger logger = LoggerFactory.getLogger(JobDeploymentHandler.class);
+	private static final Logger logger = LoggerFactory.getLogger(ZKJobDeploymentHandler.class);
 
 	/**
 	 * Deploy the Job with the given name.

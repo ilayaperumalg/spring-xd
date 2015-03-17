@@ -10,17 +10,23 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.rest;
+package org.springframework.xd.dirt.core;
 
-import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage;
+import java.util.Map;
 
 /**
- * Interface that defines the contract to process the {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage}.
+ * This interface sets up validation methods that need to be implemented before producing the
+ * {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage}s.
  *
  * @author Ilayaperumal Gopinathan
  */
-public interface DeploymentMessageProducer {
+public interface PreDeploymentValidator {
 
-	public void produceDeploymentMessage(DeploymentMessage deploymentMessage);
+	void beforeSave(String name, String definition);
 
+	void beforeDeploy(String name, Map<String, String> properties);
+
+	void beforeUndeploy(String name);
+
+	void beforeDelete(String name);
 }
