@@ -85,9 +85,15 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	@Autowired
 	private AdminRepository adminRepository;
 
+	/**
+	 * Deployment utility that holds the necessary singletons for ZK based deployments.
+	 */
 	@Autowired
 	private ZKDeploymentUtility zkDeploymentUtility;
 
+	/**
+	 * Consumer for {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage}s.
+	 */
 	@Autowired
 	private DeploymentMessageConsumer deploymentMessageConsumer;
 
@@ -96,6 +102,10 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	 */
 	private final AdminAttributes adminAttributes;
 
+	/**
+	 * ZK distributed queue for the {@link org.springframework.xd.dirt.server.admin.deployment.DeploymentMessageConsumer}
+	 * to use.
+	 */
 	private volatile DeploymentQueue deploymentQueueForConsumer = null;
 
 	/**

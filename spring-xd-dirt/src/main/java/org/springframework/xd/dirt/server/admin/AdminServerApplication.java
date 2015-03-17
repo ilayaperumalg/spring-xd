@@ -25,7 +25,6 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.autoconfigure.AuditAutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
@@ -47,14 +46,11 @@ import org.springframework.context.annotation.ImportResource;
 import org.springframework.context.event.SourceFilteringListener;
 import org.springframework.web.filter.HttpPutFormContentFilter;
 import org.springframework.xd.batch.XdBatchDatabaseInitializer;
-import org.springframework.xd.dirt.cluster.AdminAttributes;
 import org.springframework.xd.dirt.rest.RestConfiguration;
 import org.springframework.xd.dirt.server.MessageBusClassLoaderFactory;
 import org.springframework.xd.dirt.server.ParentConfiguration;
 import org.springframework.xd.dirt.server.SharedServerContextConfiguration;
-import org.springframework.xd.dirt.server.admin.deployment.DefaultStateCalculator;
-import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentWriter;
-import org.springframework.xd.dirt.server.admin.deployment.DeploymentSupervisor;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentConfiguration;
 import org.springframework.xd.dirt.server.options.AdminOptions;
 import org.springframework.xd.dirt.server.options.CommandLinePropertySourceOverridingListener;
 import org.springframework.xd.dirt.util.BannerUtils;
@@ -63,19 +59,14 @@ import org.springframework.xd.dirt.util.RuntimeUtils;
 import org.springframework.xd.dirt.util.XdConfigLoggingInitializer;
 import org.springframework.xd.dirt.util.XdProfiles;
 import org.springframework.xd.dirt.web.WebConfiguration;
-import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 
 @Configuration
-@EnableAutoConfiguration(exclude = { BatchAutoConfiguration.class, JmxAutoConfiguration.class,
-		AuditAutoConfiguration.class, GroovyTemplateAutoConfiguration.class })
+@EnableAutoConfiguration(exclude = {BatchAutoConfiguration.class, JmxAutoConfiguration.class,
+		AuditAutoConfiguration.class, GroovyTemplateAutoConfiguration.class})
 @ImportResource("classpath:" + ConfigLocations.XD_INTERNAL_CONFIG_ROOT + "admin-server.xml")
 @ComponentScan("org.springframework.xd.dirt.server.security")
-@Import({ RestConfiguration.class, WebConfiguration.class })
+@Import({RestConfiguration.class, WebConfiguration.class, DeploymentConfiguration.class})
 public class AdminServerApplication {
-
-
-	@Autowired
-	private ZooKeeperConnection zooKeeperConnection;
 
 	private static final Log logger = LogFactory.getLog(AdminServerApplication.class);
 
@@ -176,30 +167,6 @@ public class AdminServerApplication {
 				}
 			}
 		}
-	}
-
-	@Bean
-	public AdminAttributes adminAttributes() {
-		AdminAttributes adminAttributes = new AdminAttributes();
-		adminAttributes.setHost(RuntimeUtils.getHost()).setIp(RuntimeUtils.getIpAddress()).setPid(
-				RuntimeUtils.getPid());
-		return adminAttributes;
-	}
-
-	// todo: Move the ZK dependent beans into separate configuration.
-	@Bean
-	public ModuleDeploymentWriter moduleDeploymentWriter() {
-		return new ModuleDeploymentWriter();
-	}
-
-	@Bean
-	public DeploymentSupervisor deploymentSupervisor() {
-		return new DeploymentSupervisor(adminAttributes());
-	}
-
-	@Bean
-	public DefaultStateCalculator stateCalculator() {
-		return new DefaultStateCalculator();
 	}
 
 	@Bean

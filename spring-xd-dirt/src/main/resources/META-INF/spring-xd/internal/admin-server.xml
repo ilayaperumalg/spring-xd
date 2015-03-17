@@ -5,11 +5,12 @@
 	   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
 
-	<import resource="deployers.xml" />
-
 	<context:annotation-config/>
 
 	<context:component-scan base-package="org.springframework.xd.dirt.stream.completion" />
+
+	<!-- This service plays a similar supporting role to ModulesController as StreamDeployer does with StreamsController -->
+	<bean id="moduleDefinitionService" class="org.springframework.xd.dirt.module.ModuleDefinitionService"/>
 
 	<bean id="containerMatcher" class="org.springframework.xd.dirt.server.admin.deployment.ContainerMatcher">
 		<constructor-arg>
@@ -18,42 +19,5 @@
 			</list>
 		</constructor-arg>
 	</bean>
-
-	<bean id="stateCalculator" class="org.springframework.xd.dirt.server.admin.deployment.DefaultStateCalculator" />
-
-	<bean id="adminRepository" class="org.springframework.xd.dirt.container.store.ZooKeeperAdminRepository"/>
-
-	<bean id="streamFactory" class="org.springframework.xd.dirt.stream.StreamFactory">
-		<constructor-arg ref="streamDefinitionRepository"/>
-		<constructor-arg ref="moduleRegistry"/>
-		<constructor-arg ref="moduleOptionsMetadataResolver"/>
-	</bean>
-
-	<bean id="jobFactory" class="org.springframework.xd.dirt.job.JobFactory">
-		<constructor-arg ref="jobDefinitionRepository"/>
-		<constructor-arg ref="moduleRegistry"/>
-		<constructor-arg ref="moduleOptionsMetadataResolver"/>
-	</bean>
-
-	<bean id="zkDeploymentUtil" class="org.springframework.xd.dirt.server.admin.deployment.ZKDeploymentUtility">
-		<constructor-arg ref="zooKeeperConnection"/>
-		<constructor-arg ref="containerRepository"/>
-		<constructor-arg ref="moduleDeploymentWriter"/>
-		<constructor-arg ref="streamFactory"/>
-		<constructor-arg ref="jobFactory"/>
-		<constructor-arg ref="containerMatcher"/>
-		<constructor-arg ref="stateCalculator"/>
-	</bean>
-
-	<bean id="deploymentQueue" class="org.springframework.xd.dirt.server.admin.deployment.DeploymentQueue">
-		<constructor-arg ref="zooKeeperConnection"/>
-	</bean>
-
-	<bean id="zkDeploymentMessageProducer" class="org.springframework.xd.dirt.rest.ZKDeploymentMessageProducer">
-		<constructor-arg ref="deploymentQueue"/>
-	</bean>
-
-	<bean id="deploymentMessageConsumer" class="org.springframework.xd.dirt.server.admin.deployment.DeploymentMessageConsumer"/>
-
 
 </beans>
