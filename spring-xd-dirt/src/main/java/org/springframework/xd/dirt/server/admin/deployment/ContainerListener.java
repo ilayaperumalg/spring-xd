@@ -84,20 +84,17 @@ public class ContainerListener implements PathChildrenCacheListener {
 	/**
 	 * Construct a ContainerListener.
 	 *
-	 * @param zkDeploymentUtility ZooKeeper deployment utility
 	 * @param streamDeployments cache of children for stream deployments path
 	 * @param jobDeployments cache of children for job deployments path
 	 * @param moduleDeploymentRequests cache of children for requested module deployments path
 	 * @param quietPeriod AtomicLong indicating quiet period for new container module deployments
 	 */
-	public ContainerListener(ZKDeploymentUtility zkDeploymentUtility,
-			PathChildrenCache streamDeployments, PathChildrenCache jobDeployments,
+	public ContainerListener(PathChildrenCache streamDeployments, PathChildrenCache jobDeployments,
 			PathChildrenCache moduleDeploymentRequests,
 			ScheduledExecutorService executorService, AtomicLong quietPeriod) {
-		this.containerMatchingModuleRedeployer = new ContainerMatchingModuleRedeployer(zkDeploymentUtility,
-				streamDeployments, jobDeployments, moduleDeploymentRequests);
-		this.departingContainerModuleRedeployer = new DepartingContainerModuleRedeployer(zkDeploymentUtility,
-				moduleDeploymentRequests);
+		this.containerMatchingModuleRedeployer = new ContainerMatchingModuleRedeployer(streamDeployments,
+				jobDeployments, moduleDeploymentRequests);
+		this.departingContainerModuleRedeployer = new DepartingContainerModuleRedeployer(moduleDeploymentRequests);
 		this.quietPeriod = quietPeriod;
 		this.executorService = executorService;
 	}

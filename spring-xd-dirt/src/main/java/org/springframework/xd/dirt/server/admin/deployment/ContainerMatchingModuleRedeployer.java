@@ -69,10 +69,9 @@ public class ContainerMatchingModuleRedeployer extends ModuleRedeployer {
 	 * @param jobDeployments cache of children for job deployments path
 	 * @param moduleDeploymentRequests cache of children for requested module deployments path
 	 */
-	public ContainerMatchingModuleRedeployer(ZKDeploymentUtility zkDeploymentUtility,
-			PathChildrenCache streamDeployments, PathChildrenCache jobDeployments,
+	public ContainerMatchingModuleRedeployer(PathChildrenCache streamDeployments, PathChildrenCache jobDeployments,
 			PathChildrenCache moduleDeploymentRequests) {
-		super(zkDeploymentUtility, moduleDeploymentRequests);
+		super(moduleDeploymentRequests);
 		this.streamDeployments = streamDeployments;
 		this.jobDeployments = jobDeployments;
 	}
@@ -106,7 +105,7 @@ public class ContainerMatchingModuleRedeployer extends ModuleRedeployer {
 		// iterate the cache of stream deployments
 		for (ChildData data : streamDeployments.getCurrentData()) {
 			String streamName = ZooKeeperUtils.stripPathConverter.convert(data);
-			final Stream stream = DeploymentLoader.loadStream(client, streamName, zkDeploymentUtility.getStreamFactory());
+			final Stream stream = DeploymentLoader.loadStream(client, streamName, streamFactory);
 			// if stream is null this means the stream was destroyed or undeployed
 			if (stream != null) {
 				List<ModuleDeploymentRequestsPath> requestedModules =
@@ -150,7 +149,7 @@ public class ContainerMatchingModuleRedeployer extends ModuleRedeployer {
 			String jobName = ZooKeeperUtils.stripPathConverter.convert(data);
 
 			// if job is null this means the job was destroyed or undeployed
-			Job job = DeploymentLoader.loadJob(client, jobName, zkDeploymentUtility.getJobFactory());
+			Job job = DeploymentLoader.loadJob(client, jobName, jobFactory);
 			if (job != null) {
 				List<ModuleDeploymentRequestsPath> requestedModules = ModuleDeploymentRequestsPath.getModulesForDeploymentUnit(
 						requestedModulesPaths, jobName);

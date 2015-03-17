@@ -55,8 +55,8 @@ public class JobDeploymentHandler extends ZKDeploymentHandler {
 	 */
 	@Override
 	public void deploy(String jobName) throws Exception {
-		CuratorFramework client = zkDeploymentUtility.getZkConnection().getClient();
-		deployJob(client, DeploymentLoader.loadJob(client, jobName, zkDeploymentUtility.getJobFactory()));
+		CuratorFramework client = zkConnection.getClient();
+		deployJob(client, DeploymentLoader.loadJob(client, jobName, jobFactory));
 	}
 
 	/**
@@ -107,9 +107,9 @@ public class JobDeploymentHandler extends ZKDeploymentHandler {
 				for (ModuleDescriptor descriptor : job.getModuleDescriptors()) {
 					RuntimeModuleDeploymentProperties deploymentProperties = new RuntimeModuleDeploymentProperties();
 					deploymentProperties.putAll(provider.propertiesForDescriptor(descriptor));
-					Deque<Container> matchedContainers = new ArrayDeque<Container>(zkDeploymentUtility.getContainerMatcher().match(descriptor,
+					Deque<Container> matchedContainers = new ArrayDeque<Container>(containerMatcher.match(descriptor,
 							deploymentProperties,
-							zkDeploymentUtility.getContainerRepository().findAll()));
+							containerRepository.findAll()));
 					// Modules count == 0
 					if (deploymentProperties.getCount() == 0) {
 						deploymentProperties.setSequence(0);
@@ -126,14 +126,14 @@ public class JobDeploymentHandler extends ZKDeploymentHandler {
 							new RuntimeModuleDeploymentPropertiesProvider(provider);
 
 					try {
-						deploymentStatuses.addAll(zkDeploymentUtility.getModuleDeploymentWriter().writeDeployment(
+						deploymentStatuses.addAll(moduleDeploymentWriter.writeDeployment(
 								descriptor, deploymentRuntimeProvider, matchedContainers));
 					}
 					catch (NoContainerException e) {
 						logger.warn("No containers available for deployment of job {}", job.getName());
 					}
 
-					DeploymentUnitStatus status = zkDeploymentUtility.getStateCalculator().calculate(job, provider, deploymentStatuses);
+					DeploymentUnitStatus status = stateCalculator.calculate(job, provider, deploymentStatuses);
 
 					logger.info("Deployment status for job '{}': {}", job.getName(), status);
 

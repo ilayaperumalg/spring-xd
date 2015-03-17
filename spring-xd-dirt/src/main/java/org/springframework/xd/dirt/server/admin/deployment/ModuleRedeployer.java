@@ -31,10 +31,12 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.cluster.NoContainerException;
+import org.springframework.xd.dirt.container.store.ContainerRepository;
 import org.springframework.xd.dirt.core.DeploymentUnit;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.Job;
@@ -42,7 +44,10 @@ import org.springframework.xd.dirt.core.JobDeploymentsPath;
 import org.springframework.xd.dirt.core.ModuleDeploymentRequestsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
+import org.springframework.xd.dirt.job.JobFactory;
+import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.Paths;
+import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDeploymentProperties;
 import org.springframework.xd.module.ModuleDescriptor;
@@ -67,20 +72,61 @@ public abstract class ModuleRedeployer {
 	 */
 	private final Logger logger = LoggerFactory.getLogger(ModuleRedeployer.class);
 
-	protected final ZKDeploymentUtility zkDeploymentUtility;
+	/**
+	 * ZooKeeper connection
+	 */
+	@Autowired
+	protected ZooKeeperConnection zkConnection;
+
+	/**
+	 * Factory to construct {@link org.springframework.xd.dirt.core.Stream} instance
+	 */
+	@Autowired
+	protected StreamFactory streamFactory;
+
+	/**
+	 * Factory to construct {@link org.springframework.xd.dirt.core.Job} instance
+	 */
+	@Autowired
+	protected JobFactory jobFactory;
+
+	/**
+	 * Matcher that applies container matching criteria
+	 */
+	@Autowired
+	protected ContainerMatcher containerMatcher;
+
+	/**
+	 * Repository for the containers
+	 */
+	@Autowired
+	protected ContainerRepository containerRepository;
+
+	/**
+	 * Utility that writes module deployment requests to ZK path
+	 */
+	@Autowired
+	protected ModuleDeploymentWriter moduleDeploymentWriter;
+
+	/**
+	 * Deployment unit state calculator
+	 */
+	@Autowired
+	protected DeploymentUnitStateCalculator stateCalculator;
+
 
 	/**
 	 * Cache of children under the module deployment requests path.
 	 */
 	protected final PathChildrenCache moduleDeploymentRequests;
+
+
 	/**
 	 * Constructs {@code ModuleRedeployer}
 	 *
-	 * @param zkDeploymentUtility ZooKeeper deployment utility
 	 * @param moduleDeploymentRequests cache of children for requested module deployments path
 	 */
-	public ModuleRedeployer(ZKDeploymentUtility zkDeploymentUtility, PathChildrenCache moduleDeploymentRequests) {
-		this.zkDeploymentUtility = zkDeploymentUtility;
+	public ModuleRedeployer(PathChildrenCache moduleDeploymentRequests) {
 		this.moduleDeploymentRequests = moduleDeploymentRequests;
 	}
 
@@ -98,7 +144,7 @@ public abstract class ModuleRedeployer {
 	 * @return Curator client
 	 */
 	protected CuratorFramework getClient() {
-		return zkDeploymentUtility.getZkConnection().getClient();
+		return zkConnection.getClient();
 	}
 
 	/**
@@ -211,7 +257,7 @@ public abstract class ModuleRedeployer {
 				Collection<String> containers = (moduleDescriptor.getType() == ModuleType.job)
 						? getContainersForJobModule(moduleDescriptor)
 						: getContainersForStreamModule(moduleDescriptor);
-				deploymentStatus = deployModule(moduleDeployment, zkDeploymentUtility.getContainerMatcher(), containers);
+				deploymentStatus = deployModule(moduleDeployment, containerMatcher, containers);
 			}
 			catch (NoContainerException e) {
 				logger.warn("No containers available for redeployment of {} for stream {}",
@@ -248,14 +294,14 @@ public abstract class ModuleRedeployer {
 			ContainerMatcher containerMatcher, Collection<String> exclusions) throws Exception {
 		transitionToDeploying(moduleDeployment.deploymentUnit);
 		
-		Iterable<Container> containers = zkDeploymentUtility.getContainerRepository().findAll();
+		Iterable<Container> containers = containerRepository.findAll();
 		MatchingPredicate matchingPredicate = new MatchingPredicate(exclusions);
 		Collection<Container> matchedContainers = containerMatcher.match(moduleDeployment.moduleDescriptor,
 				moduleDeployment.runtimeDeploymentProperties, Iterables.filter(containers, matchingPredicate));
 		if (matchedContainers.isEmpty()) {
 			throw new NoContainerException();
 		}
-		return zkDeploymentUtility.getModuleDeploymentWriter().writeDeployment(moduleDeployment.moduleDescriptor,
+		return moduleDeploymentWriter.writeDeployment(moduleDeployment.moduleDescriptor,
 				moduleDeployment.runtimeDeploymentProperties, matchedContainers.iterator().next());
 	}
 
@@ -381,7 +427,7 @@ public abstract class ModuleRedeployer {
 		ModuleDeploymentPropertiesProvider<ModuleDeploymentProperties> provider = new DefaultModuleDeploymentPropertiesProvider(
 				deploymentUnit);
 
-		DeploymentUnitStatus status = zkDeploymentUtility.getStateCalculator().calculate(deploymentUnit, provider, aggregateStatuses);
+		DeploymentUnitStatus status = stateCalculator.calculate(deploymentUnit, provider, aggregateStatuses);
 
 		logger.info("Deployment state for {} '{}': {}",
 				isStream ? "stream" : "job", deploymentUnit.getName(), status);

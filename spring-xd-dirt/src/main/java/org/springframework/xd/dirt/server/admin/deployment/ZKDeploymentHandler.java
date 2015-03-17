@@ -27,14 +27,18 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.Assert;
+import org.springframework.xd.dirt.container.store.ContainerRepository;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.Job;
 import org.springframework.xd.dirt.core.JobDeploymentsPath;
 import org.springframework.xd.dirt.core.ModuleDeploymentRequestsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
+import org.springframework.xd.dirt.job.JobFactory;
+import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.ChildPathIterator;
 import org.springframework.xd.dirt.zookeeper.Paths;
+import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDescriptor;
 import org.springframework.xd.module.ModuleType;
@@ -54,10 +58,54 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 	 */
 	private static final Logger logger = LoggerFactory.getLogger(ZKDeploymentHandler.class);
 
+	/**
+	 * ZooKeeper connection
+	 */
 	@Autowired
-	protected ZKDeploymentUtility zkDeploymentUtility;
+	protected ZooKeeperConnection zkConnection;
 
-	private PathChildrenCache moduleDeploymentRequestsPath;
+	/**
+	 * Factory to construct {@link org.springframework.xd.dirt.core.Stream} instance
+	 */
+	@Autowired
+	protected StreamFactory streamFactory;
+
+	/**
+	 * Factory to construct {@link org.springframework.xd.dirt.core.Job} instance
+	 */
+	@Autowired
+	protected JobFactory jobFactory;
+
+	/**
+	 * Matcher that applies container matching criteria
+	 */
+	@Autowired
+	protected ContainerMatcher containerMatcher;
+
+	/**
+	 * Repository for the containers
+	 */
+	@Autowired
+	protected ContainerRepository containerRepository;
+
+	/**
+	 * Utility that writes module deployment requests to ZK path
+	 */
+	@Autowired
+	protected ModuleDeploymentWriter moduleDeploymentWriter;
+
+	/**
+	 * Deployment unit state calculator
+	 */
+	@Autowired
+	protected DeploymentUnitStateCalculator stateCalculator;
+
+
+	/**
+	 * Cache of children under the module deployment requests path.
+	 */
+	protected PathChildrenCache moduleDeploymentRequests;
+
 
 	/**
 	 * Create {@link org.springframework.xd.dirt.core.ModuleDeploymentRequestsPath} for the given
@@ -87,18 +135,23 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 	}
 
 	public void undeploy(String deploymentUnitName) throws Exception {
-		Assert.notNull(moduleDeploymentRequestsPath, "Module deployment request path cache shouldn't be null.");
+		Assert.notNull(moduleDeploymentRequests, "Module deployment request path cache shouldn't be null.");
 		ModuleDeploymentRequestsPath path;
-		for (ChildData requestedModulesData : moduleDeploymentRequestsPath.getCurrentData()) {
+		for (ChildData requestedModulesData : moduleDeploymentRequests.getCurrentData()) {
 			path = new ModuleDeploymentRequestsPath(requestedModulesData.getPath());
 			if (path.getDeploymentUnitName().equals(deploymentUnitName)) {
-				zkDeploymentUtility.getZkConnection().getClient().delete().deletingChildrenIfNeeded().forPath(path.build());
+				zkConnection.getClient().delete().deletingChildrenIfNeeded().forPath(path.build());
 			}
 		}
 	}
 
-	public void setModuleDeploymentRequestsPath(PathChildrenCache moduleDeploymentRequestsPath) {
-		this.moduleDeploymentRequestsPath = moduleDeploymentRequestsPath;
+	/**
+	 * Set the module deployment requests {@link org.apache.curator.framework.recipes.cache.PathChildrenCache}.
+	 *
+	 * @param moduleDeploymentRequests the path children cache for module deployment requests path
+	 */
+	public void setModuleDeploymentRequests(PathChildrenCache moduleDeploymentRequests) {
+		this.moduleDeploymentRequests = moduleDeploymentRequests;
 	}
 
 	/**
@@ -115,7 +168,7 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 					 new ChildPathIterator<String>(ZooKeeperUtils.stripPathConverter, streamDeployments); iterator.hasNext(); ) {
 			String streamName = iterator.next();
 			String definitionPath = Paths.build(Paths.build(Paths.STREAM_DEPLOYMENTS, streamName));
-			Stream stream = DeploymentLoader.loadStream(client, streamName, zkDeploymentUtility.getStreamFactory());
+			Stream stream = DeploymentLoader.loadStream(client, streamName, streamFactory);
 			if (stream != null) {
 				String streamModulesPath = Paths.build(definitionPath, Paths.MODULES);
 				List<ModuleDeploymentStatus> statusList = new ArrayList<ModuleDeploymentStatus>();
@@ -138,7 +191,7 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 					// ignore as this will result in an empty statusList
 				}
 
-				DeploymentUnitStatus status = zkDeploymentUtility.getStateCalculator().calculate(stream,
+				DeploymentUnitStatus status = stateCalculator.calculate(stream,
 						new DefaultModuleDeploymentPropertiesProvider(stream), statusList);
 
 				logger.info("Deployment status for stream '{}': {}", stream.getName(), status);
@@ -169,7 +222,7 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 		for (Iterator<String> iterator = new ChildPathIterator<String>(ZooKeeperUtils.stripPathConverter,
 				jobDeployments); iterator.hasNext(); ) {
 			String jobName = iterator.next();
-			Job job = DeploymentLoader.loadJob(client, jobName, zkDeploymentUtility.getJobFactory());
+			Job job = DeploymentLoader.loadJob(client, jobName, jobFactory);
 			if (job != null) {
 				String jobModulesPath = Paths.build(Paths.JOB_DEPLOYMENTS, jobName, Paths.MODULES);
 				List<ModuleDeploymentStatus> statusList = new ArrayList<ModuleDeploymentStatus>();
@@ -183,7 +236,7 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 							new ModuleDescriptor.Key(jobName, ModuleType.job, jobDeploymentsPath.getModuleLabel()),
 							ModuleDeploymentStatus.State.deployed, null));
 				}
-				DeploymentUnitStatus status = zkDeploymentUtility.getStateCalculator().calculate(job,
+				DeploymentUnitStatus status = stateCalculator.calculate(job,
 						new DefaultModuleDeploymentPropertiesProvider(job), statusList);
 
 				logger.info("Deployment status for job '{}': {}", job.getName(), status);
