@@ -75,7 +75,7 @@ public class DeploymentMessageConsumer implements QueueConsumer<DeploymentMessag
 	 * @param deployer the deployer to use for processing
 	 * @param deploymentMessage the deployment message
 	 */
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	private void processDeploymentMessage(ResourceDeployer deployer, DeploymentMessage deploymentMessage) {
 		DeploymentAction deploymentAction = deploymentMessage.getDeploymentAction();
 		String name = deploymentMessage.getUnitName();
