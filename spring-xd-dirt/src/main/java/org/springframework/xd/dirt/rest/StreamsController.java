@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitType;
+import org.springframework.xd.dirt.stream.Stream;
 import org.springframework.xd.dirt.stream.StreamDefinition;
 import org.springframework.xd.dirt.stream.ZKStreamDeployer;
 import org.springframework.xd.rest.domain.StreamDefinitionResource;
@@ -51,7 +52,7 @@ import org.springframework.xd.rest.domain.StreamDefinitionResource;
 @RequestMapping("/streams")
 @ExposesResourceFor(StreamDefinitionResource.class)
 public class StreamsController extends
-		XDController<StreamDefinition, StreamDefinitionResourceAssembler, StreamDefinitionResource> {
+		XDController<StreamDefinition, StreamDefinitionResourceAssembler, StreamDefinitionResource, Stream> {
 
 	@Autowired
 	public StreamsController(ZKStreamDeployer streamDeployer) {

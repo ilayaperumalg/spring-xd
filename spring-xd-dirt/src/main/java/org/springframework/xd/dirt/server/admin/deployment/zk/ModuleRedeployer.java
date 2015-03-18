@@ -45,6 +45,7 @@ import org.springframework.xd.dirt.core.ModuleDeploymentRequestsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
 import org.springframework.xd.dirt.job.JobFactory;
+import org.springframework.xd.dirt.server.admin.deployment.ContainerMatcher;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitStateCalculator;
 import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentPropertiesProvider;
 import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;

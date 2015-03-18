@@ -49,6 +49,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.cluster.Admin;
 import org.springframework.xd.dirt.cluster.AdminAttributes;
 import org.springframework.xd.dirt.container.store.AdminRepository;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentStateReCalculator;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnectionListener;
@@ -125,6 +126,11 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	 * the ZooKeeper connection is established.
 	 */
 	private final ConnectionListener connectionListener = new ConnectionListener();
+
+	/**
+	 * Deployment state re-calculator
+	 */
+	private final DeploymentStateReCalculator deploymentStateReCalculator = new DeploymentStateReCalculator();
 
 	/**
 	 * Executor service used to execute Curator path cache events.
@@ -420,13 +426,15 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 
 				// Set the ModuleDeploymentRequests path children cache to the underlying
 				// ZK based deployment handlers.
-				Map<String, ZKDeploymentHandler> zkDeploymentHandlerMap = applicationContext.getBeansOfType(ZKDeploymentHandler.class);
+				Map<String, ZKDeploymentHandler> zkDeploymentHandlerMap =
+						applicationContext.getBeansOfType(ZKDeploymentHandler.class);
 				for (Map.Entry<String, ZKDeploymentHandler> entry : zkDeploymentHandlerMap.entrySet()) {
 					ZKDeploymentHandler zkDeploymentHandler = entry.getValue();
 					zkDeploymentHandler.setModuleDeploymentRequests(moduleDeploymentRequests);
-					zkDeploymentHandler.recalculateStreamStates(client, streamDeployments);
-					zkDeploymentHandler.recalculateJobStates(client, jobDeployments);
 				}
+
+				deploymentStateReCalculator.recalculateStreamStates(client, streamDeployments);
+				deploymentStateReCalculator.recalculateJobStates(client, jobDeployments);
 
 				containerListener = new ContainerListener(streamDeployments,
 						jobDeployments,

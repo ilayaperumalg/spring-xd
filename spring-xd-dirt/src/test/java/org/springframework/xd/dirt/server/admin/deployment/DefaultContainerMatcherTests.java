@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment.zk;
+package org.springframework.xd.dirt.server.admin.deployment;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -34,7 +34,6 @@ import org.mockito.runners.MockitoJUnitRunner;
 
 import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.container.store.ContainerRepository;
-import org.springframework.xd.dirt.server.admin.deployment.zk.ContainerMatcher;
 import org.springframework.xd.module.ModuleDefinition;
 import org.springframework.xd.module.ModuleDefinitions;
 import org.springframework.xd.module.ModuleDeploymentProperties;

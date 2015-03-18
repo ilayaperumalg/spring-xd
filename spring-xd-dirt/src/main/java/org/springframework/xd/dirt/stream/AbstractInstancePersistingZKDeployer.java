@@ -136,6 +136,11 @@ public abstract class AbstractInstancePersistingZKDeployer<D extends BaseDefinit
 	 */
 	protected abstract I makeInstance(D definition);
 
+	/**
+	 * Deploy the deployment unit with the given name.
+	 *
+	 * @param deploymentUnitName the deployment unit name
+	 */
 	protected final void deployResource(String deploymentUnitName) {
 		try {
 			deploymentHandler.deploy(deploymentUnitName);
@@ -145,6 +150,11 @@ public abstract class AbstractInstancePersistingZKDeployer<D extends BaseDefinit
 		}
 	}
 
+	/**
+	 * Un-deploy the deployment unit with the given name
+	 *
+	 * @param deploymentUnitName the deployment unit name
+	 */
 	protected final void undeployResource(String deploymentUnitName) {
 		try {
 			deploymentHandler.undeploy(deploymentUnitName);
@@ -155,7 +165,7 @@ public abstract class AbstractInstancePersistingZKDeployer<D extends BaseDefinit
 	}
 
 	@Override
-	public void beforeUndeploy(String name) {
+	public void validateBeforeUndeploy(String name) {
 		Assert.hasText(name, "name cannot be blank or null");
 
 		D definition = getDefinitionRepository().findOne(name);
@@ -170,7 +180,7 @@ public abstract class AbstractInstancePersistingZKDeployer<D extends BaseDefinit
 	}
 
 	@Override
-	public void beforeDeploy(String name, Map<String, String> properties) {
+	public void validateBeforeDeploy(String name, Map<String, String> properties) {
 		Assert.hasText(name, "name cannot be blank or null");
 		Assert.notNull(properties, "properties cannot be null");
 		D definition = getDefinitionRepository().findOne(name);

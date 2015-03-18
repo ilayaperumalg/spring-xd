@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.xd.dirt.server.admin.deployment.zk;
+package org.springframework.xd.dirt.server.admin.deployment;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,7 +60,7 @@ import org.springframework.xd.module.ModuleDescriptor;
  * @author David Turanski
  * @author Ilayaperumal Gopinathan
  */
-class ContainerMatcher {
+public class ContainerMatcher {
 
 	/**
 	 * Logger.
