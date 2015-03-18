@@ -38,7 +38,6 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.xd.dirt.core.BaseDefinition;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
-import org.springframework.xd.dirt.core.ResourceDeployer;
 import org.springframework.xd.dirt.integration.bus.rabbit.NothingToDeleteException;
 import org.springframework.xd.dirt.integration.bus.rabbit.RabbitBusCleaner;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentAction;
@@ -46,7 +45,6 @@ import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessageProducer;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitType;
 import org.springframework.xd.dirt.stream.AbstractInstancePersistingZKDeployer;
-import org.springframework.xd.dirt.stream.AbstractZKDeployer;
 import org.springframework.xd.dirt.stream.BaseInstance;
 import org.springframework.xd.dirt.stream.NoSuchDefinitionException;
 import org.springframework.xd.rest.domain.DeployableResource;
@@ -66,9 +64,10 @@ import org.springframework.xd.rest.domain.support.DeploymentPropertiesFormat;
  * @author Gunnar Hillert
  */
 
-public abstract class XDController<D extends BaseDefinition, A extends ResourceAssemblerSupport<D, R>, R extends NamedResource> {
+public abstract class XDController<D extends BaseDefinition, A extends
+		ResourceAssemblerSupport<D, R>, R extends NamedResource, I extends BaseInstance<D>> {
 
-	private ResourceDeployer<D> deployer;
+	private AbstractInstancePersistingZKDeployer<D, I> deployer;
 
 	private A resourceAssemblerSupport;
 
@@ -102,7 +101,7 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 		}
 	}
 
-	protected XDController(AbstractZKDeployer<D> deployer, A resourceAssemblerSupport, DeploymentUnitType deploymentUnitType) {
+	protected XDController( AbstractInstancePersistingZKDeployer<D, I> deployer, A resourceAssemblerSupport, DeploymentUnitType deploymentUnitType) {
 		this.deployer = deployer;
 		this.resourceAssemblerSupport = resourceAssemblerSupport;
 		this.deploymentUnitType = deploymentUnitType;
@@ -116,7 +115,7 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/definitions/{name}", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
 	public void delete(@PathVariable("name") String name) throws Exception {
-		deployer.beforeDelete(name);
+		deployer.validateBeforeDelete(name);
 		deploymentMessageProducer.produceDeploymentMessage(new DeploymentMessage(deploymentUnitType)
 				.setUnitName(name)
 				.setDeploymentAction(DeploymentAction.destroy));
@@ -140,7 +139,7 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@RequestMapping(value = "/deployments/{name}", method = RequestMethod.DELETE)
 	@ResponseStatus(HttpStatus.OK)
 	public void undeploy(@PathVariable("name") String name) throws Exception {
-		deployer.beforeUndeploy(name);
+		deployer.validateBeforeUndeploy(name);
 		deploymentMessageProducer.produceDeploymentMessage(new DeploymentMessage(deploymentUnitType)
 				.setUnitName(name)
 				.setDeploymentAction(DeploymentAction.undeploy));
@@ -168,7 +167,7 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	@ResponseBody
 	public void deploy(@PathVariable("name") String name, @RequestParam(required = false) String properties) throws Exception {
 		Map<String, String> deploymentProperties = DeploymentPropertiesFormat.parseDeploymentProperties(properties);
-		deployer.beforeDeploy(name, deploymentProperties);
+		deployer.validateBeforeDeploy(name, deploymentProperties);
 		deploymentMessageProducer.produceDeploymentMessage(new DeploymentMessage(deploymentUnitType)
 				.setUnitName(name)
 				.setDeploymentAction(DeploymentAction.deploy)
@@ -256,7 +255,7 @@ public abstract class XDController<D extends BaseDefinition, A extends ResourceA
 	public void save(@RequestParam("name") String name, @RequestParam("definition") String definition,
 			@RequestParam(value = "deploy", defaultValue = "true") boolean deploy) throws Exception {
 		DeploymentAction deploymentAction = (deploy) ? DeploymentAction.createAndDeploy : DeploymentAction.create;
-		deployer.beforeSave(name, definition);
+		deployer.validateBeforeSave(name, definition);
 		deploymentMessageProducer.produceDeploymentMessage(new DeploymentMessage(deploymentUnitType)
 				.setUnitName(name)
 				.setDeploymentAction(deploymentAction)

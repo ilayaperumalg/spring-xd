@@ -20,13 +20,13 @@ import java.util.Map;
  *
  * @author Ilayaperumal Gopinathan
  */
-public interface PreDeploymentValidator {
+public interface DeploymentValidator {
 
-	void beforeSave(String name, String definition);
+	void validateBeforeSave(String name, String definition);
 
-	void beforeDeploy(String name, Map<String, String> properties);
+	void validateBeforeDeploy(String name, Map<String, String> properties);
 
-	void beforeUndeploy(String name);
+	void validateBeforeUndeploy(String name);
 
-	void beforeDelete(String name);
+	void validateBeforeDelete(String name);
 }

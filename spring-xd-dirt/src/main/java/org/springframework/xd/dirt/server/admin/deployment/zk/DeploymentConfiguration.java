@@ -25,6 +25,7 @@ import org.springframework.xd.dirt.container.store.ZooKeeperAdminRepository;
 import org.springframework.xd.dirt.integration.bus.MessageBus;
 import org.springframework.xd.dirt.job.JobFactory;
 import org.springframework.xd.dirt.module.ModuleRegistry;
+import org.springframework.xd.dirt.server.admin.deployment.DefaultStateCalculator;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitStateCalculator;
 import org.springframework.xd.dirt.stream.JobDefinitionRepository;
 import org.springframework.xd.dirt.stream.JobRepository;

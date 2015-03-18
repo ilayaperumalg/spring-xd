@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.xd.dirt.job.BatchJobAlreadyExistsException;
 import org.springframework.xd.dirt.plugins.job.DistributedJobLocator;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitType;
+import org.springframework.xd.dirt.stream.Job;
 import org.springframework.xd.dirt.stream.JobDefinition;
 import org.springframework.xd.dirt.stream.ZKJobDeployer;
 import org.springframework.xd.rest.domain.JobDefinitionResource;
@@ -52,7 +53,7 @@ import org.springframework.xd.rest.domain.JobDefinitionResource;
 @RequestMapping("/jobs")
 @ExposesResourceFor(JobDefinitionResource.class)
 public class JobsController extends
-		XDController<JobDefinition, JobDefinitionResourceAssembler, JobDefinitionResource> {
+		XDController<JobDefinition, JobDefinitionResourceAssembler, JobDefinitionResource, Job> {
 
 	@Autowired
 	private DistributedJobLocator distributedJobLocator;

@@ -36,7 +36,7 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.util.Assert;
 import org.springframework.xd.dirt.core.BaseDefinition;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
-import org.springframework.xd.dirt.core.PreDeploymentValidator;
+import org.springframework.xd.dirt.core.DeploymentValidator;
 import org.springframework.xd.dirt.core.ResourceDeployer;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
@@ -55,7 +55,7 @@ import org.springframework.xd.rest.domain.support.DeploymentPropertiesFormat;
  * @author Andy Clement
  * @author David Turanski
  */
-public abstract class AbstractZKDeployer<D extends BaseDefinition> implements ResourceDeployer<D>, PreDeploymentValidator {
+public abstract class AbstractZKDeployer<D extends BaseDefinition> implements ResourceDeployer<D>, DeploymentValidator {
 
 	private static final Logger logger = LoggerFactory.getLogger(AbstractZKDeployer.class);
 
@@ -107,7 +107,7 @@ public abstract class AbstractZKDeployer<D extends BaseDefinition> implements Re
 
 
 	@Override
-	public void beforeSave(String name, String definition) {
+	public void validateBeforeSave(String name, String definition) {
 		Assert.hasText(name, "name cannot be blank or null");
 		D definitionFromRepo = getDefinitionRepository().findOne(name);
 		if (definitionFromRepo != null) {
@@ -272,7 +272,7 @@ public abstract class AbstractZKDeployer<D extends BaseDefinition> implements Re
 	protected abstract String getDeploymentPath(D definition);
 
 	@Override
-	public void beforeDelete(String name) {
+	public void validateBeforeDelete(String name) {
 		D def = getDefinitionRepository().findOne(name);
 		if (def == null) {
 			throwNoSuchDefinitionException(name);
