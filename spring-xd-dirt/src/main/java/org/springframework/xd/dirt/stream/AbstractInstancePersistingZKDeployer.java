@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.util.Assert;
 import org.springframework.xd.dirt.core.BaseDefinition;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentException;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentHandler;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.store.DomainRepository;
@@ -146,7 +147,7 @@ public abstract class AbstractInstancePersistingZKDeployer<D extends BaseDefinit
 			deploymentHandler.deploy(deploymentUnitName);
 		}
 		catch (Exception e) {
-			throw new RuntimeException(e);
+			throw new DeploymentException(deploymentUnitName);
 		}
 	}
 
@@ -160,7 +161,7 @@ public abstract class AbstractInstancePersistingZKDeployer<D extends BaseDefinit
 			deploymentHandler.undeploy(deploymentUnitName);
 		}
 		catch (Exception e) {
-			throw new RuntimeException(e);
+			throw new DeploymentException(deploymentUnitName);
 		}
 	}
 

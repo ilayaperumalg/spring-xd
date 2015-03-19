@@ -19,6 +19,8 @@ import org.apache.curator.framework.recipes.queue.DistributedQueue;
 import org.apache.curator.framework.recipes.queue.QueueBuilder;
 import org.apache.curator.framework.recipes.queue.QueueConsumer;
 import org.apache.curator.framework.recipes.queue.QueueSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
@@ -41,16 +43,39 @@ import com.fasterxml.jackson.databind.ObjectWriter;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class DeploymentQueue implements InitializingBean, DisposableBean {
 
+	/**
+	 * Logger.
+	 */
+	private static final Logger logger = LoggerFactory.getLogger(DeploymentQueue.class);
+
+	/**
+	 * ZK distributed queue for holding the deployment messages
+	 */
 	private DistributedQueue<DeploymentMessage> distributedQueue;
 
-	private final CuratorFramework client;
-
+	/**
+	 * Consumer that consumes the deployment messages out of ZK distributed queue
+	 */
 	private final QueueConsumer<DeploymentMessage> queueConsumer;
 
+	/**
+	 * Curator framework client
+	 */
+	private final CuratorFramework client;
+
+	/**
+	 * ZK path for ZK distributed queue
+	 */
 	private final String deploymentQueuePath;
 
+	/**
+	 * Object writer for serialization of deployment message
+	 */
 	private final ObjectWriter objectWriter = new ObjectMapper().writerWithType(DeploymentMessage.class);
 
+	/**
+	 * Object reader for de-serialization of deployment message
+	 */
 	private final ObjectReader objectReader = new ObjectMapper().reader(DeploymentMessage.class);
 
 	/**
@@ -63,6 +88,7 @@ public class DeploymentQueue implements InitializingBean, DisposableBean {
 
 	/**
 	 * Construct deployment queue
+	 *
 	 * @param client the Curator framework client
 	 * @param queueConsumer the consumer that consumes the deployment messages
 	 * @param deploymentQueuePath the ZK path for the deployment queue
@@ -110,30 +136,42 @@ public class DeploymentQueue implements InitializingBean, DisposableBean {
 	 */
 	private class DeploymentMessageSerializer implements QueueSerializer<DeploymentMessage> {
 
+		/**
+		 * De-serialize the byte[] to {@link DeploymentMessage}
+		 *
+		 * @param buffer byte[]
+		 * @return the deployment message
+		 */
 		public DeploymentMessage deserialize(byte[] buffer) {
 			DeploymentMessage deploymentMessage = null;
 			try {
 				deploymentMessage = objectReader.readValue(buffer);
 			}
 			catch (JsonProcessingException e) {
-				throw new RuntimeException(e);
+				logger.error("Json processing exception when de-serializing." + e);
 			}
 			catch (IOException ioe) {
-				throw new RuntimeException(ioe);
+				logger.error("IO exception exception when de-serializing." + ioe);
 			}
 			return deploymentMessage;
 		}
 
+		/**
+		 * Serialize the deployment message
+		 *
+		 * @param message the deployment message
+		 * @return byte array
+		 */
 		public byte[] serialize(DeploymentMessage message) {
 			byte[] byteArray = null;
 			try {
 				byteArray = objectWriter.writeValueAsBytes(message);
 			}
 			catch (JsonMappingException e) {
-				throw new RuntimeException(e);
+				logger.error("Json processing exception when serializing." + e);
 			}
 			catch (IOException ioe) {
-				throw new RuntimeException(ioe);
+				logger.error("IO processing exception when de-serializing." + ioe);
 			}
 			return byteArray;
 		}
