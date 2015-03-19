@@ -47,12 +47,12 @@ import org.springframework.xd.module.ModuleDescriptor;
  *
  * @author Patrick Peralta
  */
-public class DefaultStateCalculator implements DeploymentUnitStateCalculator {
+public class DefaultDeploymentUnitStateCalculator implements DeploymentUnitStateCalculator {
 
 	/**
 	 * Logger.
 	 */
-	private static final Logger logger = LoggerFactory.getLogger(DefaultStateCalculator.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultDeploymentUnitStateCalculator.class);
 
 	/**
 	 * {@inheritDoc}

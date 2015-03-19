@@ -37,7 +37,7 @@ import org.springframework.xd.module.RuntimeModuleDeploymentProperties;
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
  */
-public abstract class ZKDeploymentHandler implements DeploymentHandler {
+public abstract class ZKDeploymentHandler implements DeploymentHandler, AdminLeaderElectionListener {
 
 	/**
 	 * ZooKeeper connection
@@ -116,7 +116,7 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 	}
 
 	@Override
-	public void undeploy(String deploymentUnitName) throws Exception {
+	public final void undeploy(String deploymentUnitName) throws Exception {
 		Assert.notNull(moduleDeploymentRequests, "Module deployment request path cache shouldn't be null.");
 		ModuleDeploymentRequestsPath path;
 		for (ChildData requestedModulesData : moduleDeploymentRequests.getCurrentData()) {
@@ -127,12 +127,9 @@ public abstract class ZKDeploymentHandler implements DeploymentHandler {
 		}
 	}
 
-	/**
-	 * Set the module deployment requests {@link org.apache.curator.framework.recipes.cache.PathChildrenCache}.
-	 *
-	 * @param moduleDeploymentRequests the path children cache for module deployment requests path
-	 */
-	public void setModuleDeploymentRequests(PathChildrenCache moduleDeploymentRequests) {
-		this.moduleDeploymentRequests = moduleDeploymentRequests;
+	@Override
+	public void onLeaderElected(LeaderElectedEvent leaderElectedEvent) {
+		this.moduleDeploymentRequests = leaderElectedEvent.getModuleDeploymentRequests();
 	}
+
 }

@@ -49,7 +49,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.xd.dirt.cluster.Admin;
 import org.springframework.xd.dirt.cluster.AdminAttributes;
 import org.springframework.xd.dirt.container.store.AdminRepository;
-import org.springframework.xd.dirt.server.admin.deployment.DeploymentStateReCalculator;
 import org.springframework.xd.dirt.zookeeper.Paths;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperConnectionListener;
@@ -126,11 +125,6 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 	 * the ZooKeeper connection is established.
 	 */
 	private final ConnectionListener connectionListener = new ConnectionListener();
-
-	/**
-	 * Deployment state re-calculator
-	 */
-	private final DeploymentStateReCalculator deploymentStateReCalculator = new DeploymentStateReCalculator();
 
 	/**
 	 * Executor service used to execute Curator path cache events.
@@ -423,18 +417,14 @@ public class DeploymentSupervisor implements ApplicationListener<ApplicationEven
 				jobDeployments = instantiatePathChildrenCache(client, Paths.JOB_DEPLOYMENTS);
 				jobDeployments.start(PathChildrenCache.StartMode.BUILD_INITIAL_CACHE);
 
+				LeaderElectedEvent leaderElectedEvent = new LeaderElectedEvent(moduleDeploymentRequests,
+						streamDeployments, jobDeployments);
 
-				// Set the ModuleDeploymentRequests path children cache to the underlying
-				// ZK based deployment handlers.
-				Map<String, ZKDeploymentHandler> zkDeploymentHandlerMap =
-						applicationContext.getBeansOfType(ZKDeploymentHandler.class);
-				for (Map.Entry<String, ZKDeploymentHandler> entry : zkDeploymentHandlerMap.entrySet()) {
-					ZKDeploymentHandler zkDeploymentHandler = entry.getValue();
-					zkDeploymentHandler.setModuleDeploymentRequests(moduleDeploymentRequests);
+				Map<String, AdminLeaderElectionListener> listenersMap =
+						applicationContext.getBeansOfType(AdminLeaderElectionListener.class);
+				for (Map.Entry<String, AdminLeaderElectionListener> entry : listenersMap.entrySet()) {
+					entry.getValue().onLeaderElected(leaderElectedEvent);
 				}
-
-				deploymentStateReCalculator.recalculateStreamStates(client, streamDeployments);
-				deploymentStateReCalculator.recalculateJobStates(client, jobDeployments);
 
 				containerListener = new ContainerListener(streamDeployments,
 						jobDeployments,

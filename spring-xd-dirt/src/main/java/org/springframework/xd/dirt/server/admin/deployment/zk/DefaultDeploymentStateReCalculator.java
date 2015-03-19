@@ -10,7 +10,7 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.springframework.xd.dirt.server.admin.deployment;
+package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -25,17 +25,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.Assert;
 import org.springframework.xd.dirt.core.DeploymentUnitStatus;
 import org.springframework.xd.dirt.core.Job;
 import org.springframework.xd.dirt.core.JobDeploymentsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
 import org.springframework.xd.dirt.job.JobFactory;
-import org.springframework.xd.dirt.server.admin.deployment.zk.DefaultModuleDeploymentPropertiesProvider;
-import org.springframework.xd.dirt.server.admin.deployment.zk.DeploymentLoader;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentStateRecalculator;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitStateCalculator;
+import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;
 import org.springframework.xd.dirt.stream.StreamFactory;
 import org.springframework.xd.dirt.zookeeper.ChildPathIterator;
 import org.springframework.xd.dirt.zookeeper.Paths;
+import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.dirt.zookeeper.ZooKeeperUtils;
 import org.springframework.xd.module.ModuleDescriptor;
 import org.springframework.xd.module.ModuleType;
@@ -43,14 +46,18 @@ import org.springframework.xd.module.ModuleType;
 /**
  * Stream/Job deployment state re-calculator upon leadership election.
  *
+ * @author Patrick Peralta
  * @author Ilayaperumal Gopinathan
  */
-public class DeploymentStateReCalculator {
+public class DefaultDeploymentStateRecalculator implements DeploymentStateRecalculator, AdminLeaderElectionListener {
 
 	/**
 	 * Logger.
 	 */
-	private static final Logger logger = LoggerFactory.getLogger(DeploymentStateReCalculator.class);
+	private static final Logger logger = LoggerFactory.getLogger(DefaultDeploymentStateRecalculator.class);
+
+	@Autowired
+	private ZooKeeperConnection zkConnection;
 
 	/**
 	 * Factory to construct {@link org.springframework.xd.dirt.core.Stream} instance
@@ -71,15 +78,26 @@ public class DeploymentStateReCalculator {
 	protected DeploymentUnitStateCalculator stateCalculator;
 
 	/**
+	 * {@link org.apache.curator.framework.recipes.cache.PathChildrenCache} for stream deployments path
+	 */
+	private PathChildrenCache streamDeployments;
+
+	/**
+	 * {@link org.apache.curator.framework.recipes.cache.PathChildrenCache} for job deployments path
+	 */
+	private PathChildrenCache jobDeployments;
+
+	/**
 	 * Iterate all deployed streams, recalculate the state of each, and create
 	 * an ephemeral node indicating the stream state. This is typically invoked
 	 * upon leader election.
 	 *
-	 * @param client             curator client
-	 * @param streamDeployments  curator cache of stream deployments
 	 * @throws Exception
 	 */
-	public void recalculateStreamStates(CuratorFramework client, PathChildrenCache streamDeployments) throws Exception {
+	@Override
+	public void recalculateStreamStates() throws Exception {
+		Assert.notNull(streamDeployments, "Stream deployment path cache shouldn't be null.");
+		CuratorFramework client = zkConnection.getClient();
 		for (Iterator<String> iterator =
 					 new ChildPathIterator<String>(ZooKeeperUtils.stripPathConverter, streamDeployments); iterator.hasNext(); ) {
 			String streamName = iterator.next();
@@ -130,11 +148,11 @@ public class DeploymentStateReCalculator {
 	 * create an ephemeral node indicating the job state. This is typically invoked
 	 * upon leader election.
 	 *
-	 * @param client          curator client
-	 * @param jobDeployments  curator cache of job deployments
 	 * @throws Exception
 	 */
-	public void recalculateJobStates(CuratorFramework client, PathChildrenCache jobDeployments) throws Exception {
+	public void recalculateJobStates() throws Exception {
+		Assert.notNull(streamDeployments, "Stream deployment path cache shouldn't be null.");
+		CuratorFramework client = zkConnection.getClient();
 		for (Iterator<String> iterator = new ChildPathIterator<String>(ZooKeeperUtils.stripPathConverter,
 				jobDeployments); iterator.hasNext(); ) {
 			String jobName = iterator.next();
@@ -167,6 +185,14 @@ public class DeploymentStateReCalculator {
 						ZooKeeperUtils.mapToBytes(status.toMap()));
 			}
 		}
+	}
+
+	@Override
+	public void onLeaderElected(LeaderElectedEvent leaderElectedEvent) throws Exception {
+		this.streamDeployments = leaderElectedEvent.getStreamDeployments();
+		this.jobDeployments = leaderElectedEvent.getJobDeployments();
+		recalculateStreamStates();
+		recalculateJobStates();
 	}
 
 }
