@@ -7,7 +7,7 @@
 		http://www.springframework.org/schema/hadoop http://www.springframework.org/schema/hadoop/spring-hadoop.xsd
 		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd">
 
-	<import resource="classpath:/META-INF/spring-xd/batch/singlestep-partition-support.xml"/>
+	<!--<import resource="classpath:/META-INF/spring-xd/batch/singlestep-partition-support.xml"/>-->
 
 	<bean id="partitioner" class="org.springframework.xd.batch.jdbc.ColumnRangePartitioner">
 		<property name="dataSource" ref="moduleDataSource"/>
@@ -16,11 +16,23 @@
 		<property name="partitions" value="${partitions}"/>
 	</bean>
 
-	<batch:step id="step1">
-		<batch:tasklet>
-			<batch:chunk reader="itemReader" writer="itemWriter" commit-interval="${commitInterval}"/>
-		</batch:tasklet>
-	</batch:step>
+	<batch:job id="job" restartable="${restartable}">
+		<batch:step id="step">
+			<batch:tasklet ref="jdbchdfstasklet">
+				<!--<batch:chunk reader="itemReader" writer="itemWriter" commit-interval="${commitInterval}"/>-->
+			</batch:tasklet>
+		</batch:step>
+	</batch:job>
+
+	<bean id="jdbchdfstasklet" class="org.springframework.xd.jdbchdfs.JdbcToHdfsWriter">
+		<constructor-arg ref="itemWriter"/>
+		<property name="dataSource" ref="moduleDataSource" />
+		<property name="tableName" value="${tableName}" />
+		<property name="columnNames" value="${columns}" />
+		<!--<property name="partitionClause" value="#{stepExecutionContext['partClause']}" />-->
+		<property name="sql" value="${sql}"/>
+		<property name="fetchSize" value="${commitInterval}"/>
+	</bean>
 
 	<bean id="moduleDataSource" class="org.apache.tomcat.jdbc.pool.DataSource" destroy-method="close">
 		<property name="driverClassName" value="${driverClassName}"/>
@@ -55,16 +67,10 @@
  		<property name="jdbcInterceptors" value="${jdbcInterceptors:#{null}}"/>
 	</bean>
 
-	<bean id="itemReader" class="org.springframework.xd.jdbc.NamedColumnJdbcItemReaderFactory" scope="step">
-		<property name="dataSource" ref="moduleDataSource" />
-		<property name="tableName" value="${tableName}" />
-		<property name="columnNames" value="${columns}" />
-		<property name="partitionClause" value="#{stepExecutionContext['partClause']}" />
-		<property name="sql" value="${sql}"/>
-		<property name="fetchSize" value="${commitInterval}"/>
-	</bean>
+	<!--<bean id="itemReader" class="org.springframework.xd.jdbc.NamedColumnJdbcReader">-->
+	<!--</bean>-->
 
-	<bean id="itemWriter" class="org.springframework.xd.batch.item.hadoop.HdfsTextItemWriter" scope="step">
+	<bean id="itemWriter" class="org.springframework.xd.batch.item.hadoop.HdfsTextItemWriter">
 		<constructor-arg ref="hadoopFs"/>
 		<property name="lineAggregator">
 			<bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
@@ -74,7 +80,7 @@
 				<property name="delimiter" value="${delimiter}"/>
 			</bean>
 		</property>
-		<property name="baseFilename" value="${fileName}#{stepExecutionContext['partSuffix']}"/>
+		<property name="baseFilename" value="${fileName}"/>
 		<property name="rolloverThresholdInBytes" value="${rollover}"/>
 		<property name="basePath" value="${directory}/"/>
 		<property name="fileSuffix" value="${fileExtension}"/>

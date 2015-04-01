@@ -84,6 +84,15 @@ project('spring-xd-extension-batch') {
     }
 }
 
+project('spring-xd-extension-jdbchdfs') {
+	description = 'Spring XD batch jdbchdfs support'
+	dependencies {
+		compile project(':spring-xd-extension-jdbc')
+		compile project(':spring-xd-hadoop')
+		compile "org.springframework.batch:spring-batch-core"
+	}
+}
+
 project('spring-xd-extension-encoder-support') {
 	description = "Common encoder support for modules"
 	dependencies {
