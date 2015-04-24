@@ -31,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.xd.dirt.cluster.Container;
 import org.springframework.xd.dirt.cluster.NoContainerException;
 import org.springframework.xd.dirt.core.ModuleDeploymentsPath;
@@ -80,7 +79,7 @@ public class ModuleDeploymentWriter {
 	 * deployment request paths.
 	 *
 	 */
-	@Value("${xd.admin.deploymentTimeout:30000}")
+	//@Value("${xd.admin.deploymentTimeout:30000}")
 	private long deploymentTimeout;
 
 	/**
