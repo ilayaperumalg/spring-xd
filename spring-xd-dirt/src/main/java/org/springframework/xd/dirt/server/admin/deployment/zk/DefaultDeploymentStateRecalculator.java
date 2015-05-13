@@ -35,6 +35,7 @@ import org.springframework.xd.dirt.core.JobDeploymentsPath;
 import org.springframework.xd.dirt.core.Stream;
 import org.springframework.xd.dirt.core.StreamDeploymentsPath;
 import org.springframework.xd.dirt.job.JobFactory;
+import org.springframework.xd.dirt.plugins.ModuleConfigurationException;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitStateCalculator;
 import org.springframework.xd.dirt.server.admin.deployment.ModuleDeploymentStatus;
 import org.springframework.xd.dirt.stream.StreamFactory;
@@ -93,42 +94,49 @@ public class DefaultDeploymentStateRecalculator implements SupervisorElectionLis
 					 new ChildPathIterator<String>(ZooKeeperUtils.stripPathConverter, streamDeployments); iterator.hasNext(); ) {
 			String streamName = iterator.next();
 			String definitionPath = Paths.build(Paths.build(Paths.STREAM_DEPLOYMENTS, streamName));
-			Stream stream = DeploymentLoader.loadStream(client, streamName, streamFactory);
-			if (stream != null) {
-				String streamModulesPath = Paths.build(definitionPath, Paths.MODULES);
-				List<ModuleDeploymentStatus> statusList = new ArrayList<ModuleDeploymentStatus>();
-				try {
-					List<String> moduleDeployments = client.getChildren().forPath(streamModulesPath);
-					for (String moduleDeployment : moduleDeployments) {
-						StreamDeploymentsPath streamDeploymentsPath = new StreamDeploymentsPath(
-								Paths.build(streamModulesPath, moduleDeployment));
-						statusList.add(new ModuleDeploymentStatus(
-								streamDeploymentsPath.getContainer(),
-								streamDeploymentsPath.getModuleSequence(),
-								new ModuleDescriptor.Key(streamName,
-										ModuleType.valueOf(streamDeploymentsPath.getModuleType()),
-										streamDeploymentsPath.getModuleLabel()),
-								ModuleDeploymentStatus.State.deployed, null));
+			try {
+				Stream stream = DeploymentLoader.loadStream(client, streamName, streamFactory);
+				if (stream != null) {
+					String streamModulesPath = Paths.build(definitionPath, Paths.MODULES);
+					List<ModuleDeploymentStatus> statusList = new ArrayList<ModuleDeploymentStatus>();
+					try {
+						List<String> moduleDeployments = client.getChildren().forPath(streamModulesPath);
+						for (String moduleDeployment : moduleDeployments) {
+							StreamDeploymentsPath streamDeploymentsPath = new StreamDeploymentsPath(
+									Paths.build(streamModulesPath, moduleDeployment));
+							statusList.add(new ModuleDeploymentStatus(
+									streamDeploymentsPath.getContainer(),
+									streamDeploymentsPath.getModuleSequence(),
+									new ModuleDescriptor.Key(streamName,
+											ModuleType.valueOf(streamDeploymentsPath.getModuleType()),
+											streamDeploymentsPath.getModuleLabel()),
+									ModuleDeploymentStatus.State.deployed, null));
+						}
 					}
-				}
-				catch (KeeperException.NoNodeException e) {
-					// indicates there are no modules deployed for this stream;
-					// ignore as this will result in an empty statusList
-				}
+					catch (KeeperException.NoNodeException e) {
+						// indicates there are no modules deployed for this stream;
+						// ignore as this will result in an empty statusList
+					}
 
-				DeploymentUnitStatus status = stateCalculator.calculate(stream,
-						new DefaultModuleDeploymentPropertiesProvider(stream), statusList);
+					DeploymentUnitStatus status = stateCalculator.calculate(stream,
+							new DefaultModuleDeploymentPropertiesProvider(stream), statusList);
 
-				logger.info("Deployment status for stream '{}': {}", stream.getName(), status);
+					logger.info("Deployment status for stream '{}': {}", stream.getName(), status);
 
-				String statusPath = Paths.build(Paths.STREAM_DEPLOYMENTS, stream.getName(), Paths.STATUS);
-				Stat stat = client.checkExists().forPath(statusPath);
-				if (stat != null) {
-					logger.trace("Found old status path {}; stat: {}", statusPath, stat);
-					client.delete().forPath(statusPath);
+					String statusPath = Paths.build(Paths.STREAM_DEPLOYMENTS, stream.getName(), Paths.STATUS);
+					Stat stat = client.checkExists().forPath(statusPath);
+					if (stat != null) {
+						logger.trace("Found old status path {}; stat: {}", statusPath, stat);
+						client.delete().forPath(statusPath);
+					}
+					client.create().withMode(CreateMode.EPHEMERAL).forPath(statusPath,
+							ZooKeeperUtils.mapToBytes(status.toMap()));
 				}
-				client.create().withMode(CreateMode.EPHEMERAL).forPath(statusPath,
-						ZooKeeperUtils.mapToBytes(status.toMap()));
+			}
+			catch (ModuleConfigurationException mce) {
+				logger.error(String.format("Exception while recalculating deployment state for the stream %s. If the " +
+								"stream is already deployed into container(s), try un-deploy and re-deploy after fixing " +
+								"module configuration.", streamName));
 			}
 		}
 	}
@@ -146,33 +154,40 @@ public class DefaultDeploymentStateRecalculator implements SupervisorElectionLis
 		for (Iterator<String> iterator = new ChildPathIterator<String>(ZooKeeperUtils.stripPathConverter,
 				jobDeployments); iterator.hasNext(); ) {
 			String jobName = iterator.next();
-			Job job = DeploymentLoader.loadJob(client, jobName, jobFactory);
-			if (job != null) {
-				String jobModulesPath = Paths.build(Paths.JOB_DEPLOYMENTS, jobName, Paths.MODULES);
-				List<ModuleDeploymentStatus> statusList = new ArrayList<ModuleDeploymentStatus>();
-				List<String> moduleDeployments = client.getChildren().forPath(jobModulesPath);
-				for (String moduleDeployment : moduleDeployments) {
-					JobDeploymentsPath jobDeploymentsPath = new JobDeploymentsPath(
-							Paths.build(jobModulesPath, moduleDeployment));
-					statusList.add(new ModuleDeploymentStatus(
-							jobDeploymentsPath.getContainer(),
-							jobDeploymentsPath.getModuleSequence(),
-							new ModuleDescriptor.Key(jobName, ModuleType.job, jobDeploymentsPath.getModuleLabel()),
-							ModuleDeploymentStatus.State.deployed, null));
-				}
-				DeploymentUnitStatus status = stateCalculator.calculate(job,
-						new DefaultModuleDeploymentPropertiesProvider(job), statusList);
+			try {
+				Job job = DeploymentLoader.loadJob(client, jobName, jobFactory);
+				if (job != null) {
+					String jobModulesPath = Paths.build(Paths.JOB_DEPLOYMENTS, jobName, Paths.MODULES);
+					List<ModuleDeploymentStatus> statusList = new ArrayList<ModuleDeploymentStatus>();
+					List<String> moduleDeployments = client.getChildren().forPath(jobModulesPath);
+					for (String moduleDeployment : moduleDeployments) {
+						JobDeploymentsPath jobDeploymentsPath = new JobDeploymentsPath(
+								Paths.build(jobModulesPath, moduleDeployment));
+						statusList.add(new ModuleDeploymentStatus(
+								jobDeploymentsPath.getContainer(),
+								jobDeploymentsPath.getModuleSequence(),
+								new ModuleDescriptor.Key(jobName, ModuleType.job, jobDeploymentsPath.getModuleLabel()),
+								ModuleDeploymentStatus.State.deployed, null));
+					}
+					DeploymentUnitStatus status = stateCalculator.calculate(job,
+							new DefaultModuleDeploymentPropertiesProvider(job), statusList);
 
-				logger.info("Deployment status for job '{}': {}", job.getName(), status);
+					logger.info("Deployment status for job '{}': {}", job.getName(), status);
 
-				String statusPath = Paths.build(Paths.JOB_DEPLOYMENTS, job.getName(), Paths.STATUS);
-				Stat stat = client.checkExists().forPath(statusPath);
-				if (stat != null) {
-					logger.trace("Found old status path {}; stat: {}", statusPath, stat);
-					client.delete().forPath(statusPath);
+					String statusPath = Paths.build(Paths.JOB_DEPLOYMENTS, job.getName(), Paths.STATUS);
+					Stat stat = client.checkExists().forPath(statusPath);
+					if (stat != null) {
+						logger.trace("Found old status path {}; stat: {}", statusPath, stat);
+						client.delete().forPath(statusPath);
+					}
+					client.create().withMode(CreateMode.EPHEMERAL).forPath(statusPath,
+							ZooKeeperUtils.mapToBytes(status.toMap()));
 				}
-				client.create().withMode(CreateMode.EPHEMERAL).forPath(statusPath,
-						ZooKeeperUtils.mapToBytes(status.toMap()));
+			}
+			catch (ModuleConfigurationException mce) {
+				logger.error(String.format("Exception while recalculating deployment state for the job %s. If the " +
+						"job is already deployed into container(s), try un-deploy and re-deploy after fixing " +
+						"module configuration.", jobName));
 			}
 		}
 	}
