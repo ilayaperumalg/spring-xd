@@ -14,22 +14,31 @@ package org.springframework.xd.dirt.server.admin.deployment.zk;
 
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.CuratorWatcher;
-import org.apache.curator.framework.recipes.queue.DistributedQueue;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.Assert;
+import org.springframework.xd.dirt.container.store.ContainerRepository;
 import org.springframework.xd.dirt.core.RuntimeTimeoutException;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentAction;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentException;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage;
 import org.springframework.xd.dirt.server.admin.deployment.DeploymentMessagePublisher;
+import org.springframework.xd.dirt.server.admin.deployment.DeploymentUnitType;
+import org.springframework.xd.dirt.stream.JobDefinitionRepository;
+import org.springframework.xd.dirt.stream.ParsingContext;
+import org.springframework.xd.dirt.stream.StreamDefinitionRepository;
+import org.springframework.xd.dirt.stream.XDStreamParser;
 import org.springframework.xd.dirt.zookeeper.Paths;
+import org.springframework.xd.module.ModuleDescriptor;
 
 
 /**
@@ -67,12 +76,25 @@ public class ZKDeploymentMessagePublisher implements DeploymentMessagePublisher 
 	 */
 	private final DeploymentQueue deploymentQueue;
 
+	@Autowired
+	private XDStreamParser parser;
+
+	@Autowired
+	private StreamDefinitionRepository streamDefinitionRepository;
+
+	@Autowired
+	private JobDefinitionRepository jobDefinitionRepository;
+
+	@Autowired
+	private ContainerRepository containerRepository;
+
+
 	/**
 	 * Amount of time to wait for a status to be written to all module
 	 * deployment request paths.
 	 *
 	 * @see ModuleDeploymentWriter
-	 * @see #getTimeout()
+	 * @see getTimeout(org.springframework.xd.dirt.server.admin.deployment.DeploymentMessage)
 	 */
 	@Value("${xd.admin.deploymentTimeout:30000}")
 	private long deploymentTimeout;
@@ -98,8 +120,62 @@ public class ZKDeploymentMessagePublisher implements DeploymentMessagePublisher 
 	 * @see #deploymentTimeout
 	 * @return timeout for deployment message processing
 	 */
-	private long getTimeout() {
-		return deploymentTimeout * 3;
+	private long getTimeout(DeploymentMessage deploymentMessage) {
+		long timeout = deploymentTimeout * 3;
+		DeploymentAction action = deploymentMessage.getDeploymentAction();
+		//todo: add cases for deployAll, undeployAll and destroyAll
+		switch (action) {
+			case createAndDeploy:
+			case deploy:
+				//todo: Since deploymentProperties isn't involved on un-deploy, the actual modules count is unknown.
+			case undeploy:
+			case destroy: {
+				//For a fair calculation of timeout, containers count is included with the assumption that
+				//the modules would be evenly distributed among the containers.
+				//This approach doesn't assume container matching criteria etc.,
+				//todo: respect container matching criteria
+				timeout = (calculateModulesCount(deploymentMessage) * deploymentTimeout) / containerRepository.count();
+				break;
+			}
+		}
+		return timeout;
+	}
+
+	private int calculateModulesCount(DeploymentMessage deploymentMessage) {
+		DeploymentUnitType type = deploymentMessage.getDeploymentUnitType();
+		Map<String, String> deploymentProperties = deploymentMessage.getDeploymentProperties();
+		boolean isWildCardUsed = false;
+		List<ModuleDescriptor> descriptors = null;
+		String definition = deploymentMessage.getDefinition();
+		String unitName = deploymentMessage.getUnitName();
+		if (DeploymentUnitType.Stream.equals(type)) {
+			descriptors = parser.parse(unitName,
+					(definition!= null) ? definition : streamDefinitionRepository.findOne(unitName).getDefinition(),
+					ParsingContext.stream);
+		}
+		else if (DeploymentUnitType.Job.equals(type)) {
+			descriptors = parser.parse(unitName,
+					(definition!= null) ? definition : jobDefinitionRepository.findOne(unitName).getDefinition(),
+					ParsingContext.job);
+		}
+		Assert.isTrue(!descriptors.isEmpty(), "Definition doesn't have valid module descriptors.");
+		int modulesCount = descriptors.size();
+		if (deploymentProperties != null && !deploymentProperties.isEmpty()) {
+			for (Map.Entry<String, String> entry : deploymentProperties.entrySet()) {
+				if (entry.getKey().contains("*.count")) {
+					modulesCount = Integer.valueOf(entry.getValue());
+					isWildCardUsed = true;
+					break;
+				}
+				else if (entry.getKey().contains(".count")) {
+					modulesCount = modulesCount + (Integer.valueOf(entry.getValue()) -1);
+				}
+			}
+			if (isWildCardUsed) {
+				modulesCount = descriptors.size() * modulesCount;
+			}
+		}
+		return modulesCount;
 	}
 
 	@Override
@@ -129,7 +205,7 @@ public class ZKDeploymentMessagePublisher implements DeploymentMessagePublisher 
 			client.getChildren().usingWatcher(watcher).forPath(resultPath);
 			publish(message);
 
-			long timeout = getTimeout();
+			long timeout = getTimeout(message);
 			long expiry = System.currentTimeMillis() + timeout;
 			synchronized (this) {
 				while (watcher.getState() == State.incomplete && System.currentTimeMillis() < expiry) {
