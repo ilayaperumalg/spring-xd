@@ -15,10 +15,13 @@
  */
 package org.springframework.xd.reactor;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.lang.reflect.Method;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.ResolvableType;
 import org.springframework.integration.handler.AbstractMessageProducingHandler;
@@ -27,17 +30,12 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
+
 import reactor.Environment;
 import reactor.core.processor.RingBufferProcessor;
-import reactor.fn.Consumer;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
-import reactor.rx.action.Control;
 import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.broadcast.Broadcaster;
-import reactor.rx.broadcast.SerializedBroadcaster;
-
-import java.lang.reflect.Method;
 
 /**
  * Adapts the item at a time delivery of a {@link org.springframework.messaging.MessageHandler}
@@ -73,7 +71,7 @@ import java.lang.reflect.Method;
  */
 public class BroadcasterMessageHandler extends AbstractMessageProducingHandler implements DisposableBean {
 
-	protected final Log logger = LogFactory.getLog(getClass());
+	protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final RingBufferProcessor<Object> stream;
 
@@ -122,7 +120,7 @@ public class BroadcasterMessageHandler extends AbstractMessageProducingHandler i
 			@Override
 			public void onError(Throwable throwable) {
 				//Simple log error handling
-				logger.error(throwable);
+				logger.error("Error occurred ", throwable);
 			}
 
 			@Override
@@ -145,6 +143,7 @@ public class BroadcasterMessageHandler extends AbstractMessageProducingHandler i
 
 	@Override
 	public void destroy() throws Exception {
+			logger.debug("Destroy >>>");
 			stream.onComplete();
 			environment.shutdown();
 	}

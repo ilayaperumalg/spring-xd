@@ -416,6 +416,7 @@ project('spring-xd-reactor') {
 		compile "io.projectreactor:reactor-stream"
 		compile "org.springframework.integration:spring-integration-core"
 		compile "org.springframework:spring-expression"
+		runtime 'ch.qos.logback:logback-classic'
 	}
 }
 

@@ -15,10 +15,17 @@
  */
 package org.springframework.xd.reactor;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.ResolvableType;
 import org.springframework.expression.EvaluationContext;
@@ -28,25 +35,16 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.integration.expression.IntegrationEvaluationContextAware;
 import org.springframework.integration.handler.AbstractMessageProducingHandler;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.MessageHandlingException;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ReflectionUtils;
+
 import reactor.Environment;
 import reactor.core.processor.RingBufferProcessor;
 import reactor.rx.Stream;
 import reactor.rx.Streams;
 import reactor.rx.action.support.DefaultSubscriber;
-import reactor.rx.broadcast.Broadcaster;
-
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Hashtable;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * Adapts the item at a time delivery of a {@link org.springframework.messaging.MessageHandler}
@@ -73,7 +71,7 @@ import java.util.concurrent.ConcurrentMap;
 public class MultipleBroadcasterMessageHandler extends AbstractMessageProducingHandler implements DisposableBean,
         IntegrationEvaluationContextAware {
 
-    protected final Log logger = LogFactory.getLog(getClass());
+	protected final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     private final ConcurrentMap<Object, RingBufferProcessor<Object>> reactiveProcessorMap =
             new ConcurrentHashMap<Object, RingBufferProcessor<Object>>();
@@ -97,6 +95,7 @@ public class MultipleBroadcasterMessageHandler extends AbstractMessageProducingH
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     public MultipleBroadcasterMessageHandler(Processor processor, String partitionExpression) {
+		logger.info("PartitionExpression " + partitionExpression);
         Assert.notNull(processor, "processor cannot be null.");
         Assert.notNull(partitionExpression, "Partition expression can not be null");
         this.processor = processor;
@@ -124,9 +123,9 @@ public class MultipleBroadcasterMessageHandler extends AbstractMessageProducingH
     @SuppressWarnings("unchecked")
     private RingBufferProcessor<Object> getReactiveProcessor(Message<?> message) {
         final Object idToUse = partitionExpression.getValue(evaluationContext, message, Object.class);
-        if (logger.isDebugEnabled()) {
-            logger.debug("Partition Expression evaluated to " + idToUse);
-        }
+		if (logger.isDebugEnabled()) {
+			logger.debug("Partition Expression evaluated to " + idToUse);
+		}
         RingBufferProcessor<Object> reactiveProcessor = reactiveProcessorMap.get(idToUse);
         if (reactiveProcessor == null) {
             RingBufferProcessor<Object> existingReactiveProcessor =
@@ -156,7 +155,7 @@ public class MultipleBroadcasterMessageHandler extends AbstractMessageProducingH
 
                     @Override
                     public void onError(Throwable throwable) {
-                        logger.error(throwable);
+                        logger.error("Error occurred " + throwable);
                         reactiveProcessorMap.remove(idToUse);
                     }
 
