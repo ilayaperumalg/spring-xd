@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.autoconfigure.AuditAutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.JndiDataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jmx.JmxAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoDataAutoConfiguration;
@@ -63,7 +64,8 @@ import org.springframework.xd.dirt.util.XdProfiles;
  */
 @Configuration
 @EnableAutoConfiguration(exclude = { BatchAutoConfiguration.class, JmxAutoConfiguration.class,
-	AuditAutoConfiguration.class, MongoAutoConfiguration.class, MongoDataAutoConfiguration.class })
+	AuditAutoConfiguration.class, MongoAutoConfiguration.class, MongoDataAutoConfiguration.class,
+	MongoAutoConfiguration.class, MongoDataAutoConfiguration.class, JndiDataSourceAutoConfiguration.class})
 public class ContainerServerApplication implements EnvironmentAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(ContainerServerApplication.class);
@@ -93,13 +95,16 @@ public class ContainerServerApplication implements EnvironmentAware {
 			this.containerContext = new SpringApplicationBuilder(ContainerOptions.class, ParentConfiguration.class)
 					.logStartupInfo(false)
 					.profiles(XdProfiles.CONTAINER_PROFILE)
+					.web(false)
 					.listeners(bootstrapContext.commandLineListener())
 					.listeners(classLoaderFactory)
 					.child(SharedServerContextConfiguration.class, ContainerOptions.class)
+					.web(false)
 					.resourceLoader(classLoaderFactory.getResolver())
 					.logStartupInfo(false)
 					.listeners(bootstrapContext.commandLineListener())
 					.child(ContainerServerApplication.class)
+					.web(false)
 					.logStartupInfo(false)
 					.listeners(
 							ApplicationUtils.mergeApplicationListeners(bootstrapContext.commandLineListener(),
