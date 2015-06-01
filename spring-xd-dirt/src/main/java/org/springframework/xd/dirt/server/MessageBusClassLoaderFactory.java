@@ -24,13 +24,13 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * An ApplicationListener which tracks which MessageBus implementation ought to be used so that it exposes a ClassLoader
@@ -43,6 +43,12 @@ import org.springframework.util.Assert;
 public class MessageBusClassLoaderFactory implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
 
 	public static final String MESSAGE_BUS_JARS_LOCATION = "file:${XD_HOME}/lib/messagebus/${XD_TRANSPORT}/*.jar";
+
+	public static final String SPARK_JARS_LOCATION = "file:${XD_HOME}/lib/spark-streaming/*.jar";
+
+	private boolean isSparkEnabled = false;
+
+	private String sparkJarsLocation;
 
 	private PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
 
@@ -73,13 +79,23 @@ public class MessageBusClassLoaderFactory implements ApplicationListener<Applica
 		String transport = event.getEnvironment().resolvePlaceholders("${XD_TRANSPORT}");
 		if (!"local".equals(transport)) {
 			String jarsLocation = event.getEnvironment().resolvePlaceholders(MESSAGE_BUS_JARS_LOCATION);
-
+			sparkJarsLocation = event.getEnvironment().resolvePlaceholders(SPARK_JARS_LOCATION);
+			String sparkEnabled = event.getEnvironment().resolvePlaceholders("${spark.streaming.enabled}");
+			if (StringUtils.hasText(sparkEnabled)) {
+				isSparkEnabled = Boolean.valueOf(sparkEnabled);
+			}
 			((DefaultResourceLoader) resolver.getResourceLoader()).setClassLoader(makeClassLoader(jarsLocation));
 		}
 	}
 
 	private ClassLoader makeClassLoader(String jarsLocation) {
-		URL[] messageBusJars = getUrls(jarsLocation);
+		URL[] messageBusJars;
+		if (isSparkEnabled) {
+			messageBusJars = getUrls(jarsLocation, sparkJarsLocation);
+		}
+		else {
+			messageBusJars = getUrls(jarsLocation);
+		}
 		Assert.notEmpty(messageBusJars, "Unable to locate any message bus implementation jars at location " +
 				jarsLocation);
 		return new URLClassLoader(messageBusJars, MessageBusClassLoaderFactory.class.getClassLoader());

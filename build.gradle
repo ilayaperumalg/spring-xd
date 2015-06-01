@@ -80,7 +80,7 @@ ext {
 	moduleProjects = subprojects.findAll { project -> project.path.startsWith(':modules') }
 	javaProjects = subprojects - (moduleProjects + nonJavaProjects)
 	messagebusProjects = subprojects.findAll { project -> project.path.startsWith(':spring-xd-messagebus-') } - project(':spring-xd-messagebus-spi') - project(':spring-xd-messagebus-local')
-
+	sparkStreamingProjects = subprojects.findAll { project -> project.path.startsWith(':spring-xd-spark-streaming')}
 	coverageProjects = [
 			'spring-xd-dirt',
 			'spring-xd-analytics',
@@ -102,7 +102,7 @@ ext {
 			'spring-xd-messagebus-spi',
 			'spring-xd-spi-common',
 			'spring-xd-codec'
-	].collect { p -> project(p) } + messagebusProjects
+	].collect { p -> project(p) } + messagebusProjects + sparkStreamingProjects
 }
 
 // custom class to store the SingleNode server process
@@ -532,7 +532,7 @@ project('spring-xd-dirt') {
 		compile project(":spring-xd-module")
 		compile "com.jayway.jsonpath:json-path"
 		// TODO: move as a plugin-only requirement
-		compile project(':spring-xd-spark-streaming')
+		//compile project(':spring-xd-spark-streaming')
 
 		// ************* Container: Modules (should move on their own: XD-915)
 		compile project(":spring-xd-hadoop")
@@ -890,13 +890,36 @@ project('spring-xd-spark-streaming') {
 	description = 'Spring XD spark streaming module'
 	apply plugin: 'scala'
 	tasks.withType(ScalaCompile) { scalaCompileOptions.useAnt = false }
+	sourceSets.main.scala.srcDir "src/main/java"
+	sourceSets.main.java.srcDirs = []
 	dependencies {
 		compile("org.apache.spark:spark-streaming_$sparkScalaVersion:$sparkVersion") {
 			exclude group: 'hsqldb'
 			exclude group: 'com.esotericsoftware.kryo', module: 'kryo'
 		}
-		compile "org.springframework.integration:spring-integration-core"
-		compile project(":spring-xd-module-spi")
+//		compile "org.springframework.integration:spring-integration-core"
+//		compile project(":spring-xd-module-spi")
+//		compile project(":spring-xd-messagebus-spi")
+		provided project(":spring-xd-dirt")
+	}
+}
+
+project('spring-xd-spark-streaming-module') {
+	description = 'Spring XD spark streaming module'
+	apply plugin: 'scala'
+	tasks.withType(ScalaCompile) { scalaCompileOptions.useAnt = false }
+	sourceSets.main.scala.srcDir "src/main/java"
+	sourceSets.main.java.srcDirs = []
+	dependencies {
+		compile("org.apache.spark:spark-streaming_$sparkScalaVersion:$sparkVersion") {
+			exclude group: 'hsqldb'
+			exclude group: 'com.esotericsoftware.kryo', module: 'kryo'
+		}
+//		compile "org.springframework.integration:spring-integration-core"
+//		compile project(":spring-xd-module-spi")
+//		compile project(":spring-xd-messagebus-spi")
+		compile project(":spring-xd-dirt")
+		compile project(":spring-xd-spark-streaming")
 	}
 }
 
@@ -909,7 +932,7 @@ project('spring-xd-spark-streaming-tests') {
 		testCompile(project(path: ':spring-xd-shell', configuration: 'tests')) {
 			exclude group: 'com.google.guava'
 		}
-		testCompile project(":spring-xd-dirt")
+		testCompile project(":spring-xd-spark-streaming-module")
 		testCompile project(":spring-xd-extension-http")
 		testCompile project(":spring-xd-test-fixtures")
 	}

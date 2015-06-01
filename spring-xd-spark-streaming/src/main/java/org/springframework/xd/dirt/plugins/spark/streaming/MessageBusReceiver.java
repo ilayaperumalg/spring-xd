@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.integration.channel.DirectChannel;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.MimeType;
@@ -41,7 +40,7 @@ import org.springframework.xd.dirt.integration.bus.MessageBusSupport;
 import scala.collection.mutable.ArrayBuffer;
 
 /**
- * Spark {@link Receiver} implementation that binds to the MessageBus as a consumer.
+ * Spark {@link org.apache.spark.streaming.receiver.Receiver} implementation that binds to the MessageBus as a consumer.
  *
  * @author Mark Fisher
  * @author Ilayaperumal Gopinathan
@@ -163,7 +162,7 @@ class MessageBusReceiver extends Receiver {
 	}
 
 	/**
-	 * The {@link DirectChannel} that stores the received messages into Spark's memory.
+	 * The {@link org.springframework.integration.channel.DirectChannel} that stores the received messages into Spark's memory.
 	 */
 	private class MessageStoringChannel extends SparkStreamingChannel {
 

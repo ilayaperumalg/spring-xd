@@ -69,7 +69,6 @@ import org.springframework.xd.dirt.integration.bus.MessageBus;
 import org.springframework.xd.dirt.plugins.AbstractStreamPlugin;
 import org.springframework.xd.dirt.plugins.stream.ModuleTypeConversionSupport;
 import org.springframework.xd.dirt.server.MessageBusClassLoaderFactory;
-import org.springframework.xd.dirt.zookeeper.ZooKeeperConnection;
 import org.springframework.xd.module.ModuleType;
 import org.springframework.xd.module.core.Module;
 import org.springframework.xd.module.core.ModuleFactory;
@@ -249,7 +248,7 @@ public class SparkStreamingPlugin extends AbstractStreamPlugin {
 
 	/**
 	 * Retrieve spark configuration properties from the {@link org.springframework.xd.spark.streaming.java.Processor} implementation.
-	 * This method uses {@link SparkConfig} annotation to derive the {@link Properties} returned
+	 * This method uses {@link org.springframework.xd.spark.streaming.SparkConfig} annotation to derive the {@link java.util.Properties} returned
 	 * from the annotated methods.
 	 *
 	 * @param processor the spark streaming processor

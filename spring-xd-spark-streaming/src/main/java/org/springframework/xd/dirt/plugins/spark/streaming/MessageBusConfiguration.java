@@ -32,7 +32,7 @@ import org.springframework.core.env.PropertiesPropertySource;
 import org.springframework.xd.dirt.util.ConfigLocations;
 
 /**
- * Configuration for the MessageBus used by the {@link MessageBusReceiver} and {@link MessageBusSender}.
+ * Configuration for the MessageBus used by the {@link MessageBusReceiver} and {@link org.springframework.xd.dirt.plugins.spark.streaming.MessageBusSender}.
  *
  * @author Ilayaperumal Gopinathan
  * @since 1.1
@@ -48,7 +48,7 @@ class MessageBusConfiguration {
 	private static final String KAFKA_AUTOCOMMIT_PROPERTY = "xd.messagebus.kafka.default.autoCommitEnabled";
 
 	/**
-	 * This method called by {@link MessageBusReceiver} and {@link MessageBusSender} to setup
+	 * This method called by {@link MessageBusReceiver} and {@link org.springframework.xd.dirt.plugins.spark.streaming.MessageBusSender} to setup
 	 * message bus configuration at the spark module executor process. This configuration
 	 * should use the same properties configured in XD container that deployed the spark
 	 * streaming module.

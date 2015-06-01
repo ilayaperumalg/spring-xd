@@ -30,7 +30,6 @@ import org.springframework.xd.module.core.ModuleFactory;
 import org.springframework.xd.module.options.ModuleOptions;
 import org.springframework.xd.module.options.ModuleOptionsMetadata;
 import org.springframework.xd.module.options.ModuleOptionsMetadataResolver;
-import org.springframework.xd.spark.streaming.SparkStreamingSupport;
 
 import com.google.common.collect.Lists;
 
@@ -42,6 +41,12 @@ import com.google.common.collect.Lists;
  * @author Ilayaperumal Gopinathan
  */
 public class SparkStreamingContainerFilter implements ContainerFilter {
+
+	/**
+	 * The module execution framework is used by XD runtime to determine the module as
+	 * the spark streaming module.
+	 */
+	public static final String MODULE_EXECUTION_FRAMEWORK = "spark";
 
 	@Autowired
 	private ModuleMetadataRepository moduleMetadataRepository;
@@ -65,14 +70,14 @@ public class SparkStreamingContainerFilter implements ContainerFilter {
 		try {
 			options = optionsMetadata.interpolate(moduleDescriptor.getParameters());
 			String name = (String) options.asPropertySource().getProperty(ModuleFactory.MODULE_EXECUTION_FRAMEWORK_KEY);
-			if (SparkStreamingSupport.MODULE_EXECUTION_FRAMEWORK.equals(name)) {
+			if (MODULE_EXECUTION_FRAMEWORK.equals(name)) {
 				Iterable<ModuleMetadata> deployedModules = moduleMetadataRepository.findAll();
 				List<ModuleMetadata> sparkModules = new ArrayList<ModuleMetadata>();
 				for (ModuleMetadata moduleMetadata : deployedModules) {
 					String moduleExecutionFramework =
 							moduleMetadata.getModuleOptions().getProperty(ModuleFactory.MODULE_EXECUTION_FRAMEWORK_KEY);
 					if (moduleExecutionFramework != null &&
-							(moduleExecutionFramework.equals(SparkStreamingSupport.MODULE_EXECUTION_FRAMEWORK))) {
+							(moduleExecutionFramework.equals(MODULE_EXECUTION_FRAMEWORK))) {
 						sparkModules.add(moduleMetadata);
 					}
 				}

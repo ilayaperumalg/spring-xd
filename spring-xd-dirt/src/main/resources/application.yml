@@ -90,6 +90,9 @@ xd:
   extensions:
        basepackages:
        locations: META-INF/spring-xd/ext
+  spark:
+    streaming:
+      enabled: false
   container:
     groups: ${XD_CONTAINER_GROUPS:}
     host: ${XD_CONTAINER_HOSTNAME:}
@@ -320,13 +323,24 @@ spring:
 # XD container profile
 spring:
   profiles: container
+  cloud:
+    enabled: false
+XD_CONTAINER_MGMT: false
 server:
   port: ${PORT:0}
 management:
   port: ${XD_MGMT_PORT:${PORT:}}
 endpoints:
   shutdown:
-    enabled: true
+    enabled: ${XD_CONTAINER_MGMT:false}
+  env: ${XD_CONTAINER_MGMT:false}
+  metrics: ${XD_CONTAINER_MGMT:false}
+  trace: ${XD_CONTAINER_MGMT:false}
+  info: ${XD_CONTAINER_MGMT:false}
+  health: ${XD_CONTAINER_MGMT:false}
+  dump: ${XD_CONTAINER_MGMT:false}
+  configprops: ${XD_CONTAINER_MGMT:false}
+  beans: ${XD_CONTAINER_MGMT:false}
 
 ---
 

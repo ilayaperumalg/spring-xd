@@ -18,8 +18,6 @@ package org.springframework.xd.spark.streaming;
 
 import javax.validation.constraints.AssertTrue;
 
-import org.apache.spark.storage.StorageLevel;
-
 import org.springframework.xd.module.options.spi.ModuleOption;
 
 /**
@@ -30,7 +28,7 @@ import org.springframework.xd.module.options.spi.ModuleOption;
  */
 public class DefaultSparkStreamingModuleOptionsMetadata {
 
-	private String moduleExecutionFramework = SparkStreamingSupport.MODULE_EXECUTION_FRAMEWORK;
+	private String moduleExecutionFramework = "spark";
 
 	private String batchInterval;
 
@@ -63,7 +61,7 @@ public class DefaultSparkStreamingModuleOptionsMetadata {
 		}
 		else {
 			try {
-				StorageLevel.fromString(storageLevel);
+				//StorageLevel.fromString(storageLevel);
 				return true;
 			}
 			catch (IllegalArgumentException e) {

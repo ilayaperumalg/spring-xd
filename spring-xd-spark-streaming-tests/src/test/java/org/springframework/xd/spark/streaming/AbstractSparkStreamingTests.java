@@ -80,6 +80,7 @@ public abstract class AbstractSparkStreamingTests {
 	@Before
 	public void setup() throws Exception {
 		RandomConfigurationSupport randomConfigSupport = new RandomConfigurationSupport();
+		System.setProperty("spark.streaming.enabled", "true");
 		singleNodeApplication = new SingleNodeApplication().run("--transport", this.transport);
 		integrationTestSupport = new SingleNodeIntegrationTestSupport(singleNodeApplication);
 		integrationTestSupport.addModuleRegistry(new ResourceModuleRegistry("classpath:/spring-xd/xd/modules"));
