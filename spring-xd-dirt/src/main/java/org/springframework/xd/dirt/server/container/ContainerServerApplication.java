@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.actuate.autoconfigure.AuditAutoConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
+import org.springframework.boot.autoconfigure.data.mongo.MongoRepositoriesAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JndiDataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jmx.JmxAutoConfiguration;
 import org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration;
@@ -65,7 +66,7 @@ import org.springframework.xd.dirt.util.XdProfiles;
 @Configuration
 @EnableAutoConfiguration(exclude = { BatchAutoConfiguration.class, JmxAutoConfiguration.class,
 	AuditAutoConfiguration.class, MongoAutoConfiguration.class, MongoDataAutoConfiguration.class,
-	MongoAutoConfiguration.class, MongoDataAutoConfiguration.class, JndiDataSourceAutoConfiguration.class})
+	MongoRepositoriesAutoConfiguration.class, JndiDataSourceAutoConfiguration.class})
 public class ContainerServerApplication implements EnvironmentAware {
 
 	private static final Logger logger = LoggerFactory.getLogger(ContainerServerApplication.class);
