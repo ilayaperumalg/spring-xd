@@ -189,9 +189,9 @@ public class DefaultModuleOptionsMetadataResolver implements ModuleOptionsMetada
 
 		Resource moduleLocation = resourceLoader.getResource(definition.getLocation());
 		Properties props = ModuleUtils.loadModuleProperties(definition);
-		String springBusEnabled = props.getProperty("spring.bus.enabled");
+		String springBusEnabled = System.getProperty("spring.bus.enabled", "false");
 		ClassLoader parentCL = ModuleOptionsMetadataResolver.class.getClassLoader();
-		ClassLoader classLoaderToUse = (springBusEnabled != null && springBusEnabled.equalsIgnoreCase("true")) ?
+		ClassLoader classLoaderToUse = (springBusEnabled.equalsIgnoreCase("true")) ?
 				parentCL : ModuleUtils.createModuleDiscoveryClassLoader(moduleLocation, parentCL);
 		if (props == null) {
 			return inferModuleOptionsMetadata(definition, classLoaderToUse);
